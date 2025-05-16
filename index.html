@@ -1,11 +1,95 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <title>EHCB Cardio App – Nur HTML</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EHCB Cardio – Kraftausdauer</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 2rem; background: #f5f5f5; }
+    h1 { color: #b30000; }
+    button { padding: 0.7rem 1.2rem; margin: 0.5rem; font-size: 1rem; }
+    .phase { font-size: 1.2rem; margin-top: 1rem; }
+    .timer { font-size: 2rem; margin: 1rem 0; }
+    .progress { width: 80%; height: 20px; background: #ddd; margin: 1rem auto; border-radius: 10px; overflow: hidden; }
+    .bar { height: 100%; background: #b30000; width: 0%; transition: width 1s linear; }
+  </style>
 </head>
-<body style="font-family:sans-serif; text-align:center; padding:5rem;">
-  <h1>✅ EHCB Cardio App – funktioniert!</h1>
-  <p>Dies ist eine reine HTML-Version ohne Service Worker, ohne Manifest.</p>
+<body>
+  <h1>🏒 EHCB Cardio: Kraftausdauer</h1>
+  <div class="phase" id="phaseName">Bereit</div>
+  <div class="timer" id="time">00:00</div>
+  <div class="progress"><div class="bar" id="bar"></div></div>
+  <div>
+    <button onclick="start()">Start</button>
+    <button onclick="pause()">Pause</button>
+    <button onclick="reset()">Reset</button>
+  </div>
+
+<script>
+const kraftPhases = [
+  { name: "Aufwärmen 1", time: 180 },
+  { name: "Aufwärmen 2", time: 180 },
+  { name: "Aufwärmen 3", time: 120 },
+  { name: "Antritte", time: 120 },
+  { name: "Intervall: Sitzen", time: 180 },
+  { name: "Intervall: Stehen", time: 180 },
+  { name: "Erholung", time: 120 },
+  { name: "Cool-Down", time: 180 }
+];
+
+let current = 0, seconds = 0, interval, running = false;
+
+function start() {
+  if (running) return;
+  running = true;
+  if (seconds <= 0) {
+    seconds = kraftPhases[current].time;
+    document.getElementById("phaseName").innerText = kraftPhases[current].name;
+  }
+  interval = setInterval(() => {
+    if (seconds > 0) {
+      seconds--;
+      update();
+    } else {
+      current++;
+      if (current < kraftPhases.length) {
+        seconds = kraftPhases[current].time;
+        document.getElementById("phaseName").innerText = kraftPhases[current].name;
+        update();
+      } else {
+        clearInterval(interval);
+        document.getElementById("phaseName").innerText = "Training abgeschlossen!";
+        document.getElementById("time").innerText = "00:00";
+        document.getElementById("bar").style.width = "100%";
+        running = false;
+      }
+    }
+  }, 1000);
+}
+
+function pause() {
+  clearInterval(interval);
+  running = false;
+}
+
+function reset() {
+  clearInterval(interval);
+  current = 0;
+  seconds = 0;
+  running = false;
+  document.getElementById("phaseName").innerText = "Bereit";
+  document.getElementById("time").innerText = "00:00";
+  document.getElementById("bar").style.width = "0%";
+}
+
+function update() {
+  const m = String(Math.floor(seconds / 60)).padStart(2, "0");
+  const s = String(seconds % 60).padStart(2, "0");
+  document.getElementById("time").innerText = m + ":" + s;
+  const total = kraftPhases[current].time;
+  const percent = 100 - Math.floor((seconds / total) * 100);
+  document.getElementById("bar").style.width = percent + "%";
+}
+</script>
 </body>
 </html>
