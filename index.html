@@ -2,178 +2,140 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EHCB Cardio App V4</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EHCB Cardio App – Programmübersicht</title>
   <style>
-    body { font-family: sans-serif; text-align: center; padding: 1rem; background: #f5f5f5; }
-    h1 { color: #b30000; margin-bottom: 0.5rem; }
-    select, button { font-size: 1rem; padding: 0.6rem 1rem; margin: 0.5rem; }
-    .hidden { display: none; }
-    .phase { font-size: 1.2rem; margin-top: 1rem; }
-    .info { font-size: 0.9rem; color: #333; margin: 0.2rem 0; }
-    .timer { font-size: 2rem; margin: 0.5rem 0; }
-    .progress { width: 80%; height: 20px; background: #ddd; margin: 0.5rem auto; border-radius: 10px; overflow: hidden; }
-    .bar { height: 100%; background: #b30000; width: 0%; transition: width 1s linear; }
-    img.logo { width: 100px; margin-bottom: 0.5rem; }
+    body { font-family: sans-serif; margin: 0; padding: 0; background: #f5f5f5; color: #333; }
+    header { background: #b30000; color: white; padding: 1rem; text-align: center; }
+    .logo { height: 60px; vertical-align: middle; }
+    .container { max-width: 800px; margin: 1rem auto; padding: 0 1rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(120px,1fr)); gap: 1rem; margin-bottom: 1rem; }
+    .card { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 1rem; text-align: center; cursor: pointer; transition: transform .2s; }
+    .card:hover { transform: translateY(-3px); }
+    .card.selected { border: 2px solid #b30000; }
+    .details { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 1rem; margin-top: 1rem; }
+    .details.hidden { display: none; }
+    .details h2 { margin-top: 0; color: #b30000; }
+    .phase-display { font-size: 1.2rem; margin: 0.5rem 0; font-weight: bold; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: .5rem; }
+    th, td { padding: .5rem; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background: #f0f0f0; }
+    .controls { text-align: center; margin: 1rem 0; }
+    button { font-size: 1rem; padding: .6rem 1rem; margin: .2rem; background: #b30000; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    button:disabled { background: #aaa; }
+    .timer { text-align: center; font-size: 1.1rem; }
   </style>
 </head>
 <body>
-  <img src="logo.png" alt="EHCB Logo" class="logo">
-  <h1>EHCB Cardio App V4</h1>
-  <p>Wähle ein Programm:</p>
-  <select id="program">
-    <option value="kraft">Kraftausdauer</option>
-    <option value="anaerob">Anaerob</option>
-    <option value="vo2">VO₂max</option>
-    <option value="regen">Regeneration</option>
-    <option value="hiit">HIIT</option>
-    <option value="interval">Interval</option>
-    <option value="grund">Grundkondition</option>
-  </select>
-  <button onclick="confirmProgram()">Programm bestätigen</button>
+  <header>
+    <img src="logo.png" alt="EHCB Logo" class="logo">
+    <span>EHC Biel-Bienne Cardio App</span>
+  </header>
 
-  <div id="trainingUI" class="hidden">
-    <div class="phase" id="phaseName">Bereit</div>
-    <div class="info" id="rpm">RPM: –</div>
-    <div class="info" id="intensity">Intensität: –</div>
-    <div class="timer" id="time">00:00</div>
-    <div class="progress"><div class="bar" id="bar"></div></div>
-    <div>
-      <button onclick="start()">Start</button>
-      <button onclick="pause()">Pause</button>
-      <button onclick="reset()">Reset</button>
+  <div class="container">
+    <h1>Trainingsprogramme</h1>
+    <div class="grid" id="programGrid">
+      <!-- Programm-Kacheln werden dynamisch eingefügt -->
+    </div>
+
+    <div class="details hidden" id="detailPanel">
+      <h2 id="detailTitle"></h2>
+      <!-- Neu: Anzeige der aktuellen Phase -->
+      <div class="phase-display" id="phaseName">Phase: –</div>
+      <table id="phaseTable">
+        <thead><tr><th>Phase</th><th>Dauer</th><th>RPM</th><th>Intensität</th></tr></thead>
+        <tbody><!-- Phasen rows --></tbody>
+      </table>
+      <div class="controls">
+        <button id="startBtn">Start</button>
+        <button id="pauseBtn" disabled>Pause</button>
+        <button id="resetBtn" disabled>Reset</button>
+      </div>
+      <div class="timer">Zeit: <span id="timerDisplay">00:00</span></div>
     </div>
   </div>
 
-<script>
-// Standardwerte für RPM & Intensität
-const defaults = {
-  warmup:   { rpm: "80–90",   intensity: "60–65 % HFmax" },
-  sprint:   { rpm: "100–120", intensity: "90–100 % HFmax" },
-  pause:    { rpm: "60–70",   intensity: "50–60 % HFmax" },
-  main:     { rpm: "80–100",  intensity: "70–80 % HFmax" },
-  change:   { rpm: "90–100",  intensity: "70–85 % HFmax" },
-  cooldown: { rpm: "70–80",   intensity: "50–60 % HFmax" },
-  antritte: { rpm: "100–120", intensity: "90–100 % HFmax" },
-  sitzen:   { rpm: "60–80",   intensity: "50–65 % HFmax" }
-};
+  <script>
+  // Programme-Daten
+  const programmes = {
+    kraft:  { title: "Kraftausdauer",   phases: [{ name:"Aufwärmen 1", time:180 },{ name:"Aufwärmen 2", time:180 },{ name:"Aufwärmen 3", time:120 },{ name:"Antritte", time:120 },{ name:"Sitzen", time:180 },{ name:"Stehen", time:180 },{ name:"Erholung", time:120 },{ name:"Cool-Down", time:180 }] },
+    anaerob:{ title: "Anaerob",         phases: [{ name:"Aufwärmen", time:180 },...Array.from({length:8},(_,i)=>[{name:`Sprint ${i+1}`,time:20},{name:`Pause ${i+1}`,time:10}]).flat(),{ name:"Cool-Down", time:180 }] },
+    vo2:    { title: "VO₂max",          phases: [{ name:"Aufwärmen", time:180 },...Array.from({length:4},(_,i)=>i<3?[{name:`Intervall ${i+1}`,time:240},{name:`Pause ${i+1}`,time:180}]:[{name:`Intervall 4`,time:240}]).flat(),{ name:"Cool-Down", time:180 }] },
+    regen:  { title: "Regeneration",     phases: [{ name:"Locker fahren", time:240 },{ name:"Frequenz steigern", time:120 },{ name:"Leicht widerstand", time:180 },{ name:"Locker fahren", time:240 },{ name:"Cool-Down", time:180 }] },
+    hiit:   { title: "HIIT",             phases: [{ name:"Aufwärmen", time:600 },...Array.from({length:10},(_,i)=>[{name:`Intervall ${i+1}`,time:45},{name:`Pause ${i+1}`,time:60}]).flat(),{ name:"Cool-Down", time:600 }] },
+    interval:{title: "Interval",        phases: [{ name:"Aufwärmen", time:300 },...Array.from({length:3},(_,s)=>Array.from({length:8},(_,i)=>[{name:`Sprint ${i+1} (Set ${s+1})`,time:15},{name:`Pause ${i+1} (Set ${s+1})`,time:15}]).flat()),{ name:"Cool-Down", time:300 }] },
+    grund:  { title: "Grundkondition",   phases: [{ name:"Warm-Up (sitzend)", time:600 },{ name:"Hauptteil (sitzend)", time:2400 },{ name:"Wechsel sitz/steh", time:900 },{ name:"Sitzen", time:900 },{ name:"Cool-Down", time:600 }] }
+  };
 
-function phaseInfo(name) {
-  const n = name.toLowerCase();
-  if (n.includes("antritte"))             return defaults.antritte;
-  if (n.includes("sprint") || n.includes("intervall")) return defaults.sprint;
-  if (n.includes("pause")  || n.includes("erholung"))  return defaults.pause;
-  if (n.includes("warm"))                 return defaults.warmup;
-  if (n.includes("hauptteil"))            return defaults.main;
-  if (n.includes("wechsel"))              return defaults.change;
-  if (n.includes("sitzen"))               return defaults.sitzen;
-  if (n.includes("cool"))                 return defaults.cooldown;
-  return { rpm: "–", intensity: "–" };
-}
+  // Default-Infos (RPM & Intensität)
+  const infoMap = {
+    warmup:   { rpm: "80–90",    intensity: "60–65 %" },
+    sprint:   { rpm: "100–120",  intensity: "90–100 %" },
+    pause:    { rpm: "60–70",    intensity: "50–60 %" },
+    main:     { rpm: "80–100",   intensity: "70–80 %" },
+    change:   { rpm: "90–100",   intensity: "70–85 %" },
+    cooldown: { rpm: "70–80",    intensity: "50–60 %" },
+    antritte: { rpm: "100–120",  intensity: "90–100 %" },
+    sitzen:   { rpm: "60–80",    intensity: "50–65 %" }
+  };
 
-// Definition aller Programme
-const programmes = {
-  kraft: [
-    { name: "Aufwärmen 1", time: 180 },
-    { name: "Aufwärmen 2", time: 180 },
-    { name: "Aufwärmen 3", time: 120 },
-    { name: "Antritte", time: 120 },
-    { name: "Intervall: Sitzen", time: 180 },
-    { name: "Intervall: Stehen", time: 180 },
-    { name: "Erholung", time: 120 },
-    { name: "Cool-Down", time: 180 }
-  ],
-  anaerob: [
-    { name: "Aufwärmen", time: 180 },
-    ...Array.from({ length: 8 }, (_, i) => [
-      { name: `Sprint ${i+1}`, time: 20 },
-      { name: `Pause ${i+1}`, time: 10 }
-    ]).flat(),
-    { name: "Cool-Down", time: 180 }
-  ],
-  vo2: [
-    { name: "Aufwärmen", time: 180 },
-    ...Array.from({ length: 3 }, (_, i) => [
-      { name: `Intervall ${i+1}`, time: 240 },
-      { name: `Pause ${i+1}`, time: 180 }
-    ]).flat(),
-    { name: "Intervall 4", time: 240 },
-    { name: "Cool-Down", time: 180 }
-  ],
-  regen: [
-    { name: "Locker fahren", time: 240 },
-    { name: "Frequenz steigern", time: 120 },
-    { name: "Widerstand leicht", time: 180 },
-    { name: "Locker fahren", time: 240 },
-    { name: "Cool-Down", time: 180 }
-  ],
-  hiit: [
-    { name: "Aufwärmen", time: 600 },
-    ...Array.from({ length: 10 }, (_, i) => [
-      { name: `Intervall ${i+1}`, time: 45 },
-      { name: `Pause ${i+1}`, time: 60 }
-    ]).flat(),
-    { name: "Cool-Down", time: 600 }
-  ],
-  interval: [
-    { name: "Aufwärmen", time: 300 },
-    ...Array.from({ length: 3 }, (_, s) => Array.from({ length: 8 }, (_, i) => [
-      { name: `Sprint ${i+1} (Set ${s+1})`, time: 15 },
-      { name: `Pause ${i+1} (Set ${s+1})`, time: 15 }
-    ]).flat()),
-    { name: "Cool-Down", time: 300 }
-  ].flat(),
-  grund: [
-    { name: "Warm-Up (sitzend)", time: 600 },
-    { name: "Hauptteil (sitzend)", time: 2400 },
-    { name: "Wechsel stehend/sitzend", time: 900 },
-    { name: "Sitzen", time: 900 },
-    { name: "Cool-Down", time: 600 }
-  ]
-};
+  let timer, secs=0, phaseIndex=0, currentPlan;
+  const grid = document.getElementById('programGrid');
+  const detail = document.getElementById('detailPanel');
+  const titleEl = document.getElementById('detailTitle');
+  const phaseEl = document.getElementById('phaseName');
+  const tbody = document.querySelector('#phaseTable tbody');
+  const timerDisp = document.getElementById('timerDisplay');
+  const startBtn = document.getElementById('startBtn');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const resetBtn = document.getElementById('resetBtn');
 
-let plan = [], current = 0, secs = 0, timer;
+  // Grid aufbauen
+  Object.keys(programmes).forEach(key => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.textContent = programmes[key].title;
+    card.onclick = () => selectProgram(key, card);
+    grid.appendChild(card);
+  });
 
-function confirmProgram() {
-  const key = document.getElementById("program").value;
-  plan = programmes[key];
-  current = 0; secs = plan[0].time;
-  document.getElementById("phaseName").innerText = plan[0].name;
-  updatePhaseInfo(plan[0].name);
-  document.getElementById("trainingUI").classList.remove("hidden");
-  update();
-}
+  function selectProgram(key, card) {
+    // Auswahl hervorheben
+    grid.querySelectorAll('.card').forEach(c => c.classList.remove('selected')); card.classList.add('selected');
+    // Panel füllen
+    currentPlan = programmes[key].phases; titleEl.textContent = programmes[key].title;
+    tbody.innerHTML = '';
+    currentPlan.forEach(p => {
+      const infoKey = Object.keys(infoMap).find(k => p.name.toLowerCase().includes(k));
+      const info = infoKey ? infoMap[infoKey] : { rpm: '–', intensity: '–' };
+      tbody.insertAdjacentHTML('beforeend', `<tr><td>${p.name}</td><td>${p.time}s</td><td>${info.rpm}</td><td>${info.intensity}</td></tr>`);
+    });
+    detail.classList.remove('hidden'); resetTimer();
+  }
 
-function updatePhaseInfo(name) {
-  const info = phaseInfo(name);
-  document.getElementById("rpm").innerText = "RPM: " + info.rpm;
-  document.getElementById("intensity").innerText = "Intensität: " + info.intensity;
-}
+  function start() {
+    startBtn.disabled = true; pauseBtn.disabled = false; resetBtn.disabled = false;
+    phaseIndex = 0; secs = currentPlan[0].time; updateTimer();
+    timer = setInterval(() => {
+      if (secs > 0) { secs--; updateTimer(); }
+      else if (++phaseIndex < currentPlan.length) { secs = currentPlan[phaseIndex].time; updateTimer(); }
+      else clearInterval(timer);
+    }, 1000);
+  }
 
-function start() {
-  clearInterval(timer);
-  timer = setInterval(() => {
-    if (secs > 0) { secs--; update(); }
-    else if (++current < plan.length) {
-      secs = plan[current].time;
-      document.getElementById("phaseName").innerText = plan[current].name;
-      updatePhaseInfo(plan[current].name);
-      update();
-    } else { clearInterval(timer); }
-  }, 1000);
-}
+  function pause() { clearInterval(timer); startBtn.disabled = false; pauseBtn.disabled = true; }
 
-function pause() { clearInterval(timer); }
+  function resetTimer() {
+    clearInterval(timer); startBtn.disabled = false; pauseBtn.disabled = true; resetBtn.disabled = true;
+    secs = 0; timerDisp.textContent = '00:00'; phaseEl.textContent = 'Phase: –';
+  }
 
-function reset() { clearInterval(timer); confirmProgram(); }
+  function updateTimer() {
+    const m = String(Math.floor(secs / 60)).padStart(2, '0'), s = String(secs % 60).padStart(2, '0');
+    timerDisp.textContent = `${m}:${s}`; phaseEl.textContent = currentPlan[phaseIndex].name;
+  }
 
-function update() {
-  const m = String(Math.floor(secs / 60)).padStart(2, '0');
-  const s = String(secs % 60).padStart(2, '0');
-  document.getElementById("time").innerText = m + ":" + s;
-  document.getElementById("bar").style.width = (100 - Math.floor((secs / plan[current].time) * 100)) + "%";
-}
-</script>
+  startBtn.onclick = start; pauseBtn.onclick = pause; resetBtn.onclick = resetTimer;
+  </script>
 </body>
 </html>
-/Users/noelguyaz/Desktop/EHCB-Test/TEAM Logo.png
