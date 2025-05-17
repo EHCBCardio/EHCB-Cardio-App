@@ -8,6 +8,7 @@
     body { font-family: sans-serif; text-align: center; padding: 2rem; background: #f5f5f5; }
     h1 { color: #b30000; }
     select, button { font-size: 1rem; padding: 0.6rem 1rem; margin: 0.5rem; }
+    .hidden { display: none; }
     .phase { font-size: 1.2rem; margin-top: 1rem; }
     .timer { font-size: 2rem; margin: 1rem 0; }
     .progress { width: 80%; height: 20px; background: #ddd; margin: 1rem auto; border-radius: 10px; overflow: hidden; }
@@ -16,20 +17,25 @@
 </head>
 <body>
   <h1>🏒 EHCB Cardio App</h1>
-  <p>Wähle ein Trainingsprogramm:</p>
+  <p>Wähle ein Trainingsprogramm und bestätige:</p>
   <select id="program">
     <option value="kraft">Kraftausdauer</option>
     <option value="anaerob">Anaerob</option>
     <option value="vo2">VO₂max</option>
     <option value="regen">Regeneration</option>
-  </select><br/>
-  <button onclick="start()">Start</button>
-  <button onclick="pause()">Pause</button>
-  <button onclick="reset()">Reset</button>
+  </select>
+  <button onclick="confirmProgram()">Programm bestätigen</button>
 
-  <div class="phase" id="phaseName">Bereit</div>
-  <div class="timer" id="time">00:00</div>
-  <div class="progress"><div class="bar" id="bar"></div></div>
+  <div id="trainingUI" class="hidden">
+    <div class="phase" id="phaseName">Bereit</div>
+    <div class="timer" id="time">00:00</div>
+    <div class="progress"><div class="bar" id="bar"></div></div>
+    <div>
+      <button onclick="start()">Start</button>
+      <button onclick="pause()">Pause</button>
+      <button onclick="reset()">Reset</button>
+    </div>
+  </div>
 
 <script>
 const programmes = {
@@ -74,15 +80,17 @@ const programmes = {
 
 let plan = [], current = 0, seconds = 0, interval, running = false;
 
+function confirmProgram() {
+  const selected = document.getElementById("program").value;
+  plan = programmes[selected];
+  document.getElementById("phaseName").innerText = plan[0].name;
+  seconds = plan[0].time;
+  update();
+  document.getElementById("trainingUI").classList.remove("hidden");
+}
+
 function start() {
-  if (running) return;
-  const p = document.getElementById("program").value;
-  if (!plan.length) {
-    plan = programmes[p];
-    current = 0;
-    seconds = plan[0].time;
-    document.getElementById("phaseName").innerText = plan[0].name;
-  }
+  if (running || plan.length === 0) return;
   running = true;
   interval = setInterval(() => {
     if (seconds > 0) {
@@ -112,11 +120,10 @@ function pause() {
 
 function reset() {
   clearInterval(interval);
-  plan = [];
   current = 0;
-  seconds = 0;
+  seconds = plan[0]?.time || 0;
   running = false;
-  document.getElementById("phaseName").innerText = "Bereit";
+  document.getElementById("phaseName").innerText = plan[0]?.name || "Bereit";
   document.getElementById("time").innerText = "00:00";
   document.getElementById("bar").style.width = "0%";
 }
@@ -125,7 +132,7 @@ function update() {
   const m = String(Math.floor(seconds / 60)).padStart(2, "0");
   const s = String(seconds % 60).padStart(2, "0");
   document.getElementById("time").innerText = m + ":" + s;
-  const total = plan[current].time;
+  const total = plan[current]?.time || 1;
   const percent = 100 - Math.floor((seconds / total) * 100);
   document.getElementById("bar").style.width = percent + "%";
 }
