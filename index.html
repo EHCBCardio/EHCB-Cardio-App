@@ -3,23 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EHCB Cardio App v4</title>
+  <title>EHCB Cardio App V4</title>
   <style>
     body { font-family: sans-serif; text-align: center; padding: 1rem; background: #f5f5f5; }
-    h1 { color: #b30000; }
+    h1 { color: #b30000; margin-bottom: 0.5rem; }
     select, button { font-size: 1rem; padding: 0.6rem 1rem; margin: 0.5rem; }
     .hidden { display: none; }
     .phase { font-size: 1.2rem; margin-top: 1rem; }
-    .info { font-size: 0.9rem; margin-bottom: 0.3rem; color: #333; }
-    .timer { font-size: 2rem; margin: 1rem 0; }
-    .progress { width: 80%; height: 20px; background: #ddd; margin: 1rem auto; border-radius: 10px; overflow: hidden; }
+    .info { font-size: 0.9rem; color: #333; margin: 0.2rem 0; }
+    .timer { font-size: 2rem; margin: 0.5rem 0; }
+    .progress { width: 80%; height: 20px; background: #ddd; margin: 0.5rem auto; border-radius: 10px; overflow: hidden; }
     .bar { height: 100%; background: #b30000; width: 0%; transition: width 1s linear; }
-    img.logo { width: 100px; margin-bottom: 1rem; }
+    img.logo { width: 100px; margin-bottom: 0.5rem; }
   </style>
 </head>
 <body>
   <img src="logo.png" alt="EHCB Logo" class="logo">
-  <h1>EHCB Cardio App v4</h1>
+  <h1>EHCB Cardio App V4</h1>
   <p>Wähle ein Programm:</p>
   <select id="program">
     <option value="kraft">Kraftausdauer</option>
@@ -27,6 +27,7 @@
     <option value="vo2">VO₂max</option>
     <option value="regen">Regeneration</option>
     <option value="hiit">HIIT</option>
+    <option value="interval">Interval</option>
     <option value="grund">Grundkondition</option>
   </select>
   <button onclick="confirmProgram()">Programm bestätigen</button>
@@ -45,62 +46,88 @@
   </div>
 
 <script>
+// Standardwerte für RPM & Intensität
 const defaults = {
-  warmup:   { rpm: "80–90",   intensity: "60–65 %" },
-  sprint:   { rpm: "100–120", intensity: "90–100 %" },
-  pause:    { rpm: "60–70",   intensity: "50–60 %" },
-  main:     { rpm: "80–100",  intensity: "70–80 %" },
-  change:   { rpm: "90–100",  intensity: "70–85 %" },
-  cooldown: { rpm: "70–80",   intensity: "50–60 %" }
+  warmup:   { rpm: "80–90",   intensity: "60–65 % HFmax" },
+  sprint:   { rpm: "100–120", intensity: "90–100 % HFmax" },
+  pause:    { rpm: "60–70",   intensity: "50–60 % HFmax" },
+  main:     { rpm: "80–100",  intensity: "70–80 % HFmax" },
+  change:   { rpm: "90–100",  intensity: "70–85 % HFmax" },
+  cooldown: { rpm: "70–80",   intensity: "50–60 % HFmax" },
+  antritte: { rpm: "100–120", intensity: "90–100 % HFmax" },
+  sitzen:   { rpm: "60–80",   intensity: "50–65 % HFmax" }
 };
 
 function phaseInfo(name) {
   const n = name.toLowerCase();
+  if (n.includes("antritte"))             return defaults.antritte;
   if (n.includes("sprint") || n.includes("intervall")) return defaults.sprint;
-  if (n.includes("pause") || n.includes("erholung")) return defaults.pause;
-  if (n.includes("warm"))        return defaults.warmup;
-  if (n.includes("hauptteil"))  return defaults.main;
-  if (n.includes("wechsel"))      return defaults.change;
-  if (n.includes("cool"))         return defaults.cooldown;
+  if (n.includes("pause")  || n.includes("erholung"))  return defaults.pause;
+  if (n.includes("warm"))                 return defaults.warmup;
+  if (n.includes("hauptteil"))            return defaults.main;
+  if (n.includes("wechsel"))              return defaults.change;
+  if (n.includes("sitzen"))               return defaults.sitzen;
+  if (n.includes("cool"))                 return defaults.cooldown;
   return { rpm: "–", intensity: "–" };
 }
 
+// Definition aller Programme
 const programmes = {
   kraft: [
-    { name: "Aufwärmen 1", time: 180 }, { name: "Aufwärmen 2", time: 180 },
-    { name: "Aufwärmen 3", time: 120 }, { name: "Antritte", time: 120 },
-    { name: "Intervall: Sitzen", time: 180 }, { name: "Intervall: Stehen", time: 180 },
-    { name: "Erholung", time: 120 }, { name: "Cool-Down", time: 180 }
+    { name: "Aufwärmen 1", time: 180 },
+    { name: "Aufwärmen 2", time: 180 },
+    { name: "Aufwärmen 3", time: 120 },
+    { name: "Antritte", time: 120 },
+    { name: "Intervall: Sitzen", time: 180 },
+    { name: "Intervall: Stehen", time: 180 },
+    { name: "Erholung", time: 120 },
+    { name: "Cool-Down", time: 180 }
   ],
   anaerob: [
     { name: "Aufwärmen", time: 180 },
     ...Array.from({ length: 8 }, (_, i) => [
-      { name: `Sprint ${i+1}`, time: 20 }, { name: `Pause ${i+1}`, time: 10 }
+      { name: `Sprint ${i+1}`, time: 20 },
+      { name: `Pause ${i+1}`, time: 10 }
     ]).flat(),
     { name: "Cool-Down", time: 180 }
   ],
   vo2: [
     { name: "Aufwärmen", time: 180 },
     ...Array.from({ length: 3 }, (_, i) => [
-      { name: `Intervall ${i+1}`, time: 240 }, { name: `Pause ${i+1}`, time: 180 }
+      { name: `Intervall ${i+1}`, time: 240 },
+      { name: `Pause ${i+1}`, time: 180 }
     ]).flat(),
-    { name: "Intervall 4", time: 240 }, { name: "Cool-Down", time: 180 }
+    { name: "Intervall 4", time: 240 },
+    { name: "Cool-Down", time: 180 }
   ],
   regen: [
-    { name: "Locker fahren", time: 240 }, { name: "Frequenz steigern", time: 120 },
-    { name: "Widerstand leicht", time: 180 }, { name: "Locker fahren", time: 240 },
+    { name: "Locker fahren", time: 240 },
+    { name: "Frequenz steigern", time: 120 },
+    { name: "Widerstand leicht", time: 180 },
+    { name: "Locker fahren", time: 240 },
     { name: "Cool-Down", time: 180 }
   ],
   hiit: [
     { name: "Aufwärmen", time: 600 },
     ...Array.from({ length: 10 }, (_, i) => [
-      { name: `Intervall ${i+1}`, time: 45 }, { name: `Pause ${i+1}`, time: 60 }
+      { name: `Intervall ${i+1}`, time: 45 },
+      { name: `Pause ${i+1}`, time: 60 }
     ]).flat(),
     { name: "Cool-Down", time: 600 }
   ],
+  interval: [
+    { name: "Aufwärmen", time: 300 },
+    ...Array.from({ length: 3 }, (_, s) => Array.from({ length: 8 }, (_, i) => [
+      { name: `Sprint ${i+1} (Set ${s+1})`, time: 15 },
+      { name: `Pause ${i+1} (Set ${s+1})`, time: 15 }
+    ]).flat()),
+    { name: "Cool-Down", time: 300 }
+  ].flat(),
   grund: [
-    { name: "Warm-Up (sitzend)", time: 600 }, { name: "Hauptteil (sitzend)", time: 2400 },
-    { name: "Wechsel stehend/sitzend", time: 900 }, { name: "Sitzen", time: 900 },
+    { name: "Warm-Up (sitzend)", time: 600 },
+    { name: "Hauptteil (sitzend)", time: 2400 },
+    { name: "Wechsel stehend/sitzend", time: 900 },
+    { name: "Sitzen", time: 900 },
     { name: "Cool-Down", time: 600 }
   ]
 };
@@ -108,7 +135,8 @@ const programmes = {
 let plan = [], current = 0, secs = 0, timer;
 
 function confirmProgram() {
-  plan = programmes[document.getElementById("program").value];
+  const key = document.getElementById("program").value;
+  plan = programmes[key];
   current = 0; secs = plan[0].time;
   document.getElementById("phaseName").innerText = plan[0].name;
   updatePhaseInfo(plan[0].name);
@@ -148,4 +176,4 @@ function update() {
 </script>
 </body>
 </html>
-
+/Users/noelguyaz/Desktop/EHCB-Test/TEAM Logo.png
