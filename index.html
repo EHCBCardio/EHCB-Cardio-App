@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>EHCB Cardio – Kraftausdauer</title>
+  <title>EHCB Cardio App – Programme</title>
   <style>
     body { font-family: sans-serif; text-align: center; padding: 2rem; background: #f5f5f5; }
     h1 { color: #b30000; }
-    button { padding: 0.7rem 1.2rem; margin: 0.5rem; font-size: 1rem; }
+    select, button { font-size: 1rem; padding: 0.6rem 1rem; margin: 0.5rem; }
     .phase { font-size: 1.2rem; margin-top: 1rem; }
     .timer { font-size: 2rem; margin: 1rem 0; }
     .progress { width: 80%; height: 20px; background: #ddd; margin: 1rem auto; border-radius: 10px; overflow: hidden; }
@@ -15,46 +15,84 @@
   </style>
 </head>
 <body>
-  <h1>🏒 EHCB Cardio: Kraftausdauer</h1>
+  <h1>🏒 EHCB Cardio App</h1>
+  <p>Wähle ein Trainingsprogramm:</p>
+  <select id="program">
+    <option value="kraft">Kraftausdauer</option>
+    <option value="anaerob">Anaerob</option>
+    <option value="vo2">VO₂max</option>
+    <option value="regen">Regeneration</option>
+  </select><br/>
+  <button onclick="start()">Start</button>
+  <button onclick="pause()">Pause</button>
+  <button onclick="reset()">Reset</button>
+
   <div class="phase" id="phaseName">Bereit</div>
   <div class="timer" id="time">00:00</div>
   <div class="progress"><div class="bar" id="bar"></div></div>
-  <div>
-    <button onclick="start()">Start</button>
-    <button onclick="pause()">Pause</button>
-    <button onclick="reset()">Reset</button>
-  </div>
 
 <script>
-const kraftPhases = [
-  { name: "Aufwärmen 1", time: 180 },
-  { name: "Aufwärmen 2", time: 180 },
-  { name: "Aufwärmen 3", time: 120 },
-  { name: "Antritte", time: 120 },
-  { name: "Intervall: Sitzen", time: 180 },
-  { name: "Intervall: Stehen", time: 180 },
-  { name: "Erholung", time: 120 },
-  { name: "Cool-Down", time: 180 }
-];
+const programmes = {
+  kraft: [
+    { name: "Aufwärmen 1", time: 180 },
+    { name: "Aufwärmen 2", time: 180 },
+    { name: "Aufwärmen 3", time: 120 },
+    { name: "Antritte", time: 120 },
+    { name: "Intervall: Sitzen", time: 180 },
+    { name: "Intervall: Stehen", time: 180 },
+    { name: "Erholung", time: 120 },
+    { name: "Cool-Down", time: 180 }
+  ],
+  anaerob: [
+    { name: "Aufwärmen", time: 180 },
+    { name: "Sprint 1", time: 20 }, { name: "Pause 1", time: 10 },
+    { name: "Sprint 2", time: 20 }, { name: "Pause 2", time: 10 },
+    { name: "Sprint 3", time: 20 }, { name: "Pause 3", time: 10 },
+    { name: "Sprint 4", time: 20 }, { name: "Pause 4", time: 10 },
+    { name: "Sprint 5", time: 20 }, { name: "Pause 5", time: 10 },
+    { name: "Sprint 6", time: 20 }, { name: "Pause 6", time: 10 },
+    { name: "Sprint 7", time: 20 }, { name: "Pause 7", time: 10 },
+    { name: "Sprint 8", time: 20 }, { name: "Pause 8", time: 10 },
+    { name: "Cool-Down", time: 180 }
+  ],
+  vo2: [
+    { name: "Aufwärmen", time: 180 },
+    { name: "Intervall 1", time: 240 }, { name: "Pause 1", time: 180 },
+    { name: "Intervall 2", time: 240 }, { name: "Pause 2", time: 180 },
+    { name: "Intervall 3", time: 240 }, { name: "Pause 3", time: 180 },
+    { name: "Intervall 4", time: 240 },
+    { name: "Cool-Down", time: 180 }
+  ],
+  regen: [
+    { name: "Locker fahren", time: 240 },
+    { name: "Frequenz steigern", time: 120 },
+    { name: "Widerstand leicht", time: 180 },
+    { name: "Locker fahren", time: 240 },
+    { name: "Cool-Down", time: 180 }
+  ]
+};
 
-let current = 0, seconds = 0, interval, running = false;
+let plan = [], current = 0, seconds = 0, interval, running = false;
 
 function start() {
   if (running) return;
-  running = true;
-  if (seconds <= 0) {
-    seconds = kraftPhases[current].time;
-    document.getElementById("phaseName").innerText = kraftPhases[current].name;
+  const p = document.getElementById("program").value;
+  if (!plan.length) {
+    plan = programmes[p];
+    current = 0;
+    seconds = plan[0].time;
+    document.getElementById("phaseName").innerText = plan[0].name;
   }
+  running = true;
   interval = setInterval(() => {
     if (seconds > 0) {
       seconds--;
       update();
     } else {
       current++;
-      if (current < kraftPhases.length) {
-        seconds = kraftPhases[current].time;
-        document.getElementById("phaseName").innerText = kraftPhases[current].name;
+      if (current < plan.length) {
+        seconds = plan[current].time;
+        document.getElementById("phaseName").innerText = plan[current].name;
         update();
       } else {
         clearInterval(interval);
@@ -74,6 +112,7 @@ function pause() {
 
 function reset() {
   clearInterval(interval);
+  plan = [];
   current = 0;
   seconds = 0;
   running = false;
@@ -86,7 +125,7 @@ function update() {
   const m = String(Math.floor(seconds / 60)).padStart(2, "0");
   const s = String(seconds % 60).padStart(2, "0");
   document.getElementById("time").innerText = m + ":" + s;
-  const total = kraftPhases[current].time;
+  const total = plan[current].time;
   const percent = 100 - Math.floor((seconds / total) * 100);
   document.getElementById("bar").style.width = percent + "%";
 }
