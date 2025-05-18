@@ -1,21 +1,20 @@
 {
-  "name": "EHCB Spinning Cardio App",
   "short_name": "EHCB Cardio",
-  "start_url": ".",
-  "display": "standalone",
-  "theme_color": "#b30000",
-  "background_color": "#f5f5f5",
-  "lang": "de",
+  "name": "EHCB Spinning Cardio App",
   "icons": [
     {
-      "src": "icons/logo-192.png",
+      "src": "logo-192.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "icons/logo-512.png",
+      "src": "logo-512.png",
       "type": "image/png",
       "sizes": "512x512"
     }
-  ]
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f5f5f5",
+  "theme_color": "#b30000"
 }
