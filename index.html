@@ -3,43 +3,53 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>EHCB Cardio App – Dynamische Phasen</title>
+  <title>EHCB Cardio App</title>
   <style>
     body { font-family: sans-serif; text-align: center; padding: 1rem; background: #f5f5f5; }
     header { display: flex; align-items: center; justify-content: center; gap: 1rem; }
     img.logo { width: 80px; }
     h1 { color: #b30000; }
     .controls { margin: 1rem; }
-    select, button, input[type="text"], input[type="number"] {
-      font-size: 1rem; padding: 0.5rem; margin: 0.3rem;
+    .program-buttons button {
+      font-size: 1rem; padding: 0.6rem 1rem; margin: 0.5rem;
+      background: #b30000; color: #fff; border: none; border-radius: 4px;
+      cursor: pointer;
     }
+    .program-buttons button:hover { background: #a20000; }
     .hidden { display: none; }
-    table { margin: 1rem auto; width: 90%; max-width: 800px; border-collapse: collapse; }
+    .phase, .info, .timer { margin: 0.5rem 0; }
+    .progress { width: 80%; height: 16px; background: #ddd; margin: 0.5rem auto; border-radius: 8px; overflow: hidden; }
+    .bar { height: 100%; background: #b30000; width: 0%; transition: width 1s linear; }
+    table { margin: 1rem auto; width: 90%; max-width: 600px; border-collapse: collapse; }
     th, td { border: 1px solid #ccc; padding: 6px 8px; }
     th { background: #eee; }
   </style>
 </head>
 <body>
+
   <header>
     <img src="logo.png" alt="EHCB Logo" class="logo">
     <h1>EHCB Cardio App</h1>
   </header>
+
   <div class="controls">
-    <label for="program">Programm wählen:</label>
-    <select id="program"></select>
-    <button id="confirmBtn">Programm bestätigen</button>
+    <div>Programm wählen:</div>
+    <div class="program-buttons" id="programButtons"></div>
     <button id="editBtn">Phasen bearbeiten (Coach)</button>
   </div>
+
   <div id="trainingUI" class="hidden">
     <h2 id="currentProgramName">Programm</h2>
-    <p id="phaseName">Phase</p>
-    <p id="time">00:00</p>
+    <div class="phase" id="phaseName">Bereit</div>
+    <div class="info" id="time">00:00</div>
+    <div class="progress"><div class="bar" id="bar"></div></div>
     <div>
       <button onclick="start()">Start</button>
       <button onclick="pause()">Pause</button>
       <button onclick="reset()">Reset</button>
     </div>
   </div>
+
   <div id="editForm" class="hidden">
     <h2>Bearbeite Phasen: <span id="editProgramName"></span></h2>
     <button id="addPhaseBtn">Phase hinzufügen</button>
@@ -50,23 +60,33 @@
     <button id="saveBtn">Speichern</button>
     <button id="cancelBtn">Abbrechen</button>
   </div>
+
 <script>
 const COACH_PW = "coach123";
 let programmes = {}, plan = [], currentProgram = null, current=0, seconds=0, timer;
 
-fetch("programmes.json").then(r=>r.json()).then(data=>{
-  programmes = data;
-  initUI();
-});
+// Load programme definitions
+fetch("programmes.json")
+  .then(r => r.json())
+  .then(data => { programmes = data; initUI(); });
 
 function initUI(){
-  const sel = document.getElementById("program");
-  for(const key in programmes){
-    const opt = document.createElement("option");
-    opt.value=key; opt.textContent=key;
-    sel.append(opt);
+  const labels = {
+    kraft: "Kraft-Ausdauer",
+    anaerob: "Anaerob",
+    vo2: "Vo2max",
+    hiit: "HIIT",
+    interval: "Intervall",
+    grund: "Grundkondition",
+    regen: "Regeneration"
+  };
+  const container = document.getElementById("programButtons");
+  for(const key in labels){
+    const btn = document.createElement("button");
+    btn.textContent = labels[key];
+    btn.onclick = () => confirmProgram(key, labels[key]);
+    container.appendChild(btn);
   }
-  document.getElementById("confirmBtn").onclick = confirmProgram;
   document.getElementById("editBtn").onclick = showEdit;
   document.getElementById("addPhaseBtn").onclick = addPhaseRow;
   document.getElementById("saveBtn").onclick = saveEdits;
@@ -76,56 +96,58 @@ function initUI(){
   };
 }
 
-function confirmProgram(){
-  currentProgram = document.getElementById("program").value;
-  plan = programmes[currentProgram].map(p=>({...p}));
+function confirmProgram(key, label){
+  currentProgram = key;
+  plan = programmes[key].map(p=>({...p}));
   current = 0; seconds = plan[0].time;
-  document.getElementById("currentProgramName").textContent = currentProgram;
-  document.getElementById("trainingUI").classList.remove("hidden");
+  document.getElementById("currentProgramName").textContent = label;
+  document.getElementById("programButtons").parentElement.classList.remove("hidden");
   document.getElementById("editForm").classList.add("hidden");
-  updateDisplay();
+  document.getElementById("trainingUI").classList.remove("hidden");
+  updatePhase();
+  updateBar();
 }
 
-function updateDisplay(){
-  const p = plan[current];
-  document.getElementById("phaseName").textContent = p.name;
-  const m = String(Math.floor(seconds/60)).padStart(2,"0"),
-        s = String(seconds%60).padStart(2,"0");
-  document.getElementById("time").textContent = m+":"+s;
+function updatePhase(){
+  document.getElementById("phaseName").textContent = plan[current].name;
+}
+function updateBar(){
+  document.getElementById("time").textContent = 
+    String(Math.floor(seconds/60)).padStart(2,"0")+":"+
+    String(seconds%60).padStart(2,"0");
+  document.getElementById("bar").style.width = 
+    (100 - Math.floor((seconds/plan[current].time)*100)) + "%";
 }
 
 function start(){
   clearInterval(timer);
   timer = setInterval(()=>{
-    if(seconds>0){
-      seconds--; updateDisplay();
-    } else if(++current<plan.length){
-      seconds=plan[current].time; updateDisplay();
-    } else clearInterval(timer);
+    if(seconds>0){ seconds--; updateBar(); }
+    else if(++current<plan.length){ seconds=plan[current].time; updatePhase(); updateBar(); }
+    else clearInterval(timer);
   },1000);
 }
 function pause(){ clearInterval(timer); }
-function reset(){ clearInterval(timer); confirmProgram(); }
+function reset(){ clearInterval(timer); confirmProgram(currentProgram, document.getElementById("currentProgramName").textContent); }
 
 function showEdit(){
-  if(!currentProgram){ alert("Bitte Programm bestätigen!"); return; }
+  if(!currentProgram){ alert("Bitte erst Programm wählen!"); return; }
   const pw = prompt("Coach-Passwort:");
-  if(pw !== COACH_PW) { if(pw) alert("Falsches Passwort!"); return; }
-  document.getElementById("editProgramName").textContent = currentProgram;
-  const tbody = document.getElementById("editTable"); tbody.innerHTML="";
-  plan.forEach((p,i)=>{
-    const row = document.createElement("tr");
-    row.innerHTML = `
+  if(pw !== COACH_PW){ if(pw) alert("Falsches Passwort!"); return; }
+  document.getElementById("editProgramName").textContent = document.getElementById("currentProgramName").textContent;
+  const tbody = document.getElementById("editTable"); tbody.innerHTML = "";
+  plan.forEach((p,i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
       <td><input type="text" value="${p.name}" data-idx="${i}"></td>
       <td><input type="number" value="${p.time}" data-idx="${i}"></td>
       <td><button data-idx="${i}" class="delBtn">Löschen</button></td>`;
-    tbody.append(row);
+    tbody.appendChild(tr);
   });
-  document.querySelectorAll(".delBtn").forEach(btn=>{
+  document.querySelectorAll(".delBtn").forEach(btn => {
     btn.onclick = e => {
-      const idx = +e.target.dataset.idx;
-      plan.splice(idx,1);
-      showEdit(); // refresh rows
+      plan.splice(+e.target.dataset.idx,1);
+      showEdit();
     };
   });
   document.getElementById("trainingUI").classList.add("hidden");
@@ -138,14 +160,14 @@ function addPhaseRow(){
 }
 
 function saveEdits(){
-  document.querySelectorAll("#editTable input").forEach(inp=>{
-    const i=+inp.dataset.idx;
-    if(inp.type==="text") plan[i].name = inp.value;
+  document.querySelectorAll("#editTable input").forEach(inp => {
+    const i = +inp.dataset.idx;
+    if(inp.type === "text") plan[i].name = inp.value;
     else plan[i].time = Number(inp.value);
   });
-  programmes[currentProgram] = plan.map(p=>({...p}));
+  programmes[currentProgram] = plan.map(p => ({...p}));
   alert("Phasen gespeichert!");
-  confirmProgram();
+  confirmProgram(currentProgram, document.getElementById("currentProgramName").textContent);
 }
 
 </script>
