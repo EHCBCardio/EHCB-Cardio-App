@@ -8,14 +8,23 @@
     body { font-family: sans-serif; text-align: center; padding: 1rem; background: #f5f5f5; }
     header { margin-bottom: 1rem; }
     header img { width: 80px; vertical-align: middle; }
-    header h1 { display: inline-block; margin-left: 0.5rem; vertical-align: middle; color: #b30000; }
+    header h1 { display: inline-block; margin-left: 0.5rem; vertical-align: middle; color: #b30000; font-size: 2rem; }
     #controlsPane { margin-bottom: 1rem; }
     .program-buttons button {
-      font-size: 1rem; padding: 0.8rem 1.2rem; margin: 0.3rem;
-      background: #b30000; color: #fff; border: none; border-radius: 4px;
+      display: inline-block;
+      font-size: 1.1rem;
+      padding: 0.8rem 1.2rem;
+      margin: 0.3rem;
+      min-width: 120px;
+      background-color: #b30000 !important;
+      color: #fff !important;
+      border: none;
+      border-radius: 6px;
       cursor: pointer;
+      text-decoration: none;
+      text-align: center;
     }
-    .program-buttons button:hover { background: #a20000; }
+    .program-buttons button:hover { background-color: #a20000 !important; }
     .hidden { display: none; }
     .info-grid {
       display: grid; grid-template-columns: 2fr 1fr 1fr 1fr;
@@ -99,7 +108,6 @@
 const COACH_PW = "coach123";
 let programmes = {}, plan = [], currentProgram = "", current = 0, seconds = 0, timer;
 
-// beep via Web Audio
 function playBeep(){
   const ctx = new (window.AudioContext||window.webkitAudioContext)();
   const o = ctx.createOscillator();
@@ -113,9 +121,7 @@ const applause = new Audio("https://actions.google.com/sounds/v1/human/applause.
 
 fetch("programmes.json")
   .then(r=>r.json())
-  .then(data=>{
-    programmes = data;
-  });
+  .then(data=>{ programmes = data; });
 
 function selectProgram(key, label){
   currentProgram = key;
@@ -137,8 +143,8 @@ function updateDisplay(){
   document.getElementById("time").textContent =
     String(Math.floor(seconds/60)).padStart(2,"0")+":"+
     String(seconds%60).padStart(2,"0");
-  const next = plan[current+1];
-  document.getElementById("nextPhase").textContent = "Nächste Phase: " + (next ? next.name : "Ende");
+  const nxt = plan[current+1];
+  document.getElementById("nextPhase").textContent = "Nächste Phase: " + (nxt ? nxt.name : "Ende");
 }
 
 function start(){
@@ -146,8 +152,8 @@ function start(){
   timer = setInterval(()=>{
     if(seconds>0){
       seconds--;
-      if(seconds>0 && seconds<=3) playBeep();
       updateDisplay();
+      if(seconds>0 && seconds<=3) playBeep();
     } else if(++current<plan.length){
       seconds = plan[current].time;
       updateDisplay();
@@ -158,6 +164,7 @@ function start(){
     }
   },1000);
 }
+
 function pause(){ clearInterval(timer); }
 function reset(){ clearInterval(timer); selectProgram(currentProgram, document.getElementById("currentProgramName").textContent); }
 
@@ -177,12 +184,12 @@ function renderEditTable(){
   tbody.innerHTML = "";
   plan.forEach((p,i)=>{
     const tr = document.createElement("tr");
-    tr.innerHTML = \`
-      <td><input type="text" data-idx="\${i}" data-field="name" value="\${p.name}"></td>
-      <td><input type="number" data-idx="\${i}" data-field="time" value="\${p.time}"></td>
-      <td><input type="text" data-idx="\${i}" data-field="rpm" value="\${p.rpm}"></td>
-      <td><input type="text" data-idx="\${i}" data-field="res" value="\${p.res}"></td>
-      <td><button class="del" data-idx="\${i}">Löschen</button></td>\`;
+    tr.innerHTML = `
+      <td><input type="text" data-idx="${i}" data-field="name" value="${p.name}"></td>
+      <td><input type="number" data-idx="${i}" data-field="time" value="${p.time}"></td>
+      <td><input type="text" data-idx="${i}" data-field="rpm" value="${p.rpm}"></td>
+      <td><input type="text" data-idx="${i}" data-field="res" value="${p.res}"></td>
+      <td><button class="del" data-idx="${i}">Löschen</button></td>`;
     tbody.appendChild(tr);
   });
   tbody.querySelectorAll(".del").forEach(btn=>btn.onclick=e=>{
