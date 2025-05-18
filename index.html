@@ -1,28 +1,32 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8"/>
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>EHCB Cardio App – Editierbar für Coaches</title>
+  <title>EHCB Cardio App – Programmeditor</title>
   <style>
     body { font-family: sans-serif; text-align: center; padding: 1rem; background: #f5f5f5; }
-    img.logo { width: 100px; margin-bottom: 1rem; }
-    h1 { color: #b30000; margin-bottom: 0.5rem; }
+    header { display: flex; align-items: center; justify-content: center; gap: 1rem; }
+    img.logo { width: 80px; }
+    h1 { color: #b30000; }
     .controls { margin: 1rem 0; }
-    select, button, textarea { font-size: 1rem; padding: 0.6rem 1rem; margin: 0.5rem; }
-    textarea { width: 90%; height: 200px; font-family: monospace; }
+    select, button, input[type="number"] { font-size: 1rem; padding: 0.5rem; margin: 0.3rem; }
     .hidden { display: none; }
-    .phase { font-size: 1.2rem; margin-top: 1rem; }
-    .info { font-size: 0.9rem; color: #333; }
-    .timer { font-size: 2rem; margin: 1rem 0; }
-    .progress { width: 80%; height: 20px; background: #ddd; margin: 1rem auto; border-radius: 10px; overflow: hidden; }
+    .phase, .info, .timer { margin: 0.5rem 0; }
+    .progress { width: 80%; height: 16px; background: #ddd; margin: 0.5rem auto; border-radius: 8px; overflow: hidden; }
     .bar { height: 100%; background: #b30000; width: 0%; transition: width 1s linear; }
+    table { margin: 1rem auto; width: 90%; max-width: 600px; border-collapse: collapse; }
+    th, td { border: 1px solid #ccc; padding: 6px 8px; }
+    th { background: #eee; }
+    #editForm { text-align: left; }
   </style>
 </head>
 <body>
 
-  <img src="logo.png" alt="EHCB Logo" class="logo"/>
-  <h1>EHCB Cardio App</h1>
+  <header>
+    <img src="logo.png" alt="EHCB Logo" class="logo">
+    <h1>EHCB Cardio App</h1>
+  </header>
 
   <div class="controls">
     <label for="program">Programm wählen:</label>
@@ -44,74 +48,89 @@
     </div>
   </div>
 
-  <div id="editUI" class="hidden">
-    <h2>Bearbeite: <span id="editProgramName"></span></h2>
-    <textarea id="editArea"></textarea><br/>
-    <button id="saveEdit">Speichern</button>
-    <button id="cancelEdit">Abbrechen</button>
+  <div id="editForm" class="hidden">
+    <h2>Bearbeite "<span id="editProgramName"></span>"</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Phase-Name</th>
+          <th>Zeit (s)</th>
+          <th>RPM Min</th>
+          <th>RPM Max</th>
+          <th>Int. Low</th>
+          <th>Int. Mid</th>
+          <th>Int. High</th>
+        </tr>
+      </thead>
+      <tbody id="editTable"></tbody>
+    </table>
+    <div>
+      <button id="saveBtn">Speichern</button>
+      <button id="cancelBtn">Abbrechen</button>
+    </div>
   </div>
 
 <script>
 // Coach-Passwort
 const COACH_PW = "coach123";
 
-// Default-Parameter
+// Default values for phase info
 const defaults = {
-  warmup:   { rpm:"80–90",   intensity:"60–65 %" },
-  sprint:   { rpm:"100–120", intensity:"90–100 %" },
-  pause:    { rpm:"60–70",   intensity:"50–60 %" },
-  main:     { rpm:"80–100",  intensity:"70–80 %" },
-  change:   { rpm:"90–100",  intensity:"70–85 %" },
-  cooldown: { rpm:"70–80",   intensity:"50–60 %" },
-  antritte: { rpm:"100–120", intensity:"90–100 %" },
-  sitzen:   { rpm:"60–80",   intensity:"50–65 %" }
+  warmup:   { rpmMin:80, rpmMax:90, intensityL:60, intensityM:65, intensityH:70 },
+  sprint:   { rpmMin:100, rpmMax:120, intensityL:90, intensityM:95, intensityH:100 },
+  pause:    { rpmMin:60, rpmMax:70, intensityL:50, intensityM:55, intensityH:60 },
+  main:     { rpmMin:80, rpmMax:100, intensityL:70, intensityM:75, intensityH:80 },
+  change:   { rpmMin:90, rpmMax:100, intensityL:70, intensityM:80, intensityH:85 },
+  cooldown: { rpmMin:70, rpmMax:80, intensityL:50, intensityM:55, intensityH:60 },
+  antritte: { rpmMin:100, rpmMax:120, intensityL:90, intensityM:95, intensityH:100 },
+  sitzen:   { rpmMin:60, rpmMax:80, intensityL:50, intensityM:65, intensityH:70 }
 };
 
-// Programme-Definitionen
+// Program definitions with only name/time, parameters auto-assigned if missing
 let programmes = {
   kraft: [
     { name:"Aufwärmen 1", time:180 },
     { name:"Aufwärmen 2", time:180 },
     { name:"Aufwärmen 3", time:120 },
-    { name:"Antritte",      time:120 },
+    { name:"Antritte", time:120 },
     { name:"Intervall: Sitzen", time:180 },
     { name:"Intervall: Stehen", time:180 },
-    { name:"Erholung",      time:120 },
-    { name:"Cool-Down",     time:180 }
-  ],
-  anaerob: [
-    { name:"Aufwärmen", time:180 },
-    ...Array.from({ length: 8 }, (_,i) => ([
-      { name:`Sprint ${i+1}`, time:20 },
-      { name:`Pause ${i+1}`,  time:10 }
-    ])).flat(),
+    { name:"Erholung", time:120 },
     { name:"Cool-Down", time:180 }
   ],
-  vo2: [
+  anaerob:[
     { name:"Aufwärmen", time:180 },
-    ...Array.from({ length:3 }, (_,i) => ([
-      { name:`Intervall ${i+1}`, time:240 },
-      { name:`Pause ${i+1}`,     time:180 }
-    ])).flat(),
-    { name:"Intervall 4", time:240 },
-    { name:"Cool-Down",   time:180 }
+    ...Array.from({ length:8 },(_,i)=>[
+      { name:`Sprint ${i+1}`, time:20 },
+      { name:`Pause ${i+1}`, time:10 }
+    ]).flat(),
+    { name:"Cool-Down", time:180 }
   ],
-  regen: [
+  vo2:[
+    { name:"Aufwärmen", time:180 },
+    ...Array.from({ length:3 },(_,i)=>[
+      { name:`Intervall ${i+1}`, time:240 },
+      { name:`Pause ${i+1}`, time:180 }
+    ]).flat(),
+    { name:"Intervall 4", time:240 },
+    { name:"Cool-Down", time:180 }
+  ],
+  regen:[
     { name:"Locker fahren", time:240 },
     { name:"Frequenz steigern", time:120 },
     { name:"Widerstand leicht", time:180 },
     { name:"Locker fahren", time:240 },
-    { name:"Cool-Down",    time:180 }
+    { name:"Cool-Down", time:180 }
   ],
-  hiit: [
+  hiit:[
     { name:"Aufwärmen", time:600 },
-    ...Array.from({ length:10 }, (_,i) => ([
+    ...Array.from({ length:10 },(_,i)=>[
       { name:`Intervall ${i+1}`, time:45 },
-      { name:`Pause ${i+1}`,     time:60 }
-    ])).flat(),
+      { name:`Pause ${i+1}`, time:60 }
+    ]).flat(),
     { name:"Cool-Down", time:600 }
   ],
-  grund: [
+  grund:[
     { name:"Warm-Up (sitzend)", time:600 },
     { name:"Hauptteil (sitzend)", time:2400 },
     { name:"Wechsel stehend/sitzend", time:900 },
@@ -122,9 +141,17 @@ let programmes = {
 
 let plan = [], currentProgram = null, current = 0, seconds = 0, timer;
 
-// Phase-Info
+// Provide rpm/intensity defaults if missing
+function enrichPhase(p){
+  if(p.rpmMin===undefined){
+    const info = phaseInfo(p.name);
+    Object.assign(p, info);
+  }
+}
+
+// Determine defaults based on name
 function phaseInfo(name){
-  const n = name.toLowerCase();
+  const n=name.toLowerCase();
   if(n.includes("antritte")) return defaults.antritte;
   if(n.includes("sprint")||n.includes("intervall")) return defaults.sprint;
   if(n.includes("pause")||n.includes("erholung")) return defaults.pause;
@@ -133,113 +160,123 @@ function phaseInfo(name){
   if(n.includes("wechsel")) return defaults.change;
   if(n.includes("sitzen")) return defaults.sitzen;
   if(n.includes("cool")) return defaults.cooldown;
-  return { rpm:"–", intensity:"–" };
+  return { rpmMin:0, rpmMax:0, intensityL:0, intensityM:0, intensityH:0 };
 }
 
-// Load Program
+// Confirm selected program
 function confirmProgram(){
   const sel = document.getElementById("program").value;
   currentProgram = sel;
   plan = programmes[sel].map(p=>({...p}));
-  current = 0; seconds = plan[0].time;
+  plan.forEach(enrichPhase);
+  current=0; seconds=plan[0].time;
   document.getElementById("trainingUI").classList.remove("hidden");
-  document.getElementById("editUI").classList.add("hidden");
-  updatePhase(plan[0].name); updateTimer();
+  document.getElementById("editForm").classList.add("hidden");
+  updatePhaseUI(); updateTimer();
 }
 
-// Update Phase display
-function updatePhase(name){
-  const info = phaseInfo(name);
-  document.getElementById("phaseName").textContent = name;
-  document.getElementById("rpm").textContent       = "RPM: " + info.rpm;
-  document.getElementById("intensity").textContent = "Intensität: " + info.intensity;
+// Update UI for phase
+function updatePhaseUI(){
+  const p = plan[current];
+  document.getElementById("phaseName").textContent = p.name;
+  document.getElementById("rpm").textContent = `RPM: ${p.rpmMin}–${p.rpmMax}`;
+  document.getElementById("intensity").textContent = `Intensität: ${p.intensityL}–${p.intensityM}–${p.intensityH} %`;
 }
 
-// Timer update
-function updateTimer(){
-  const m = String(Math.floor(seconds/60)).padStart(2,"0"),
-        s = String(seconds%60).padStart(2,"0");
-  document.getElementById("time").textContent = m + ":" + s;
-  const pct = 100 - Math.floor((seconds / plan[current].time)*100);
-  document.getElementById("bar").style.width = pct + "%";
-}
-
-// Timer controls
+// Timer functions
 function start(){
   clearInterval(timer);
   timer = setInterval(()=>{
-    if(seconds>0){
-      if(seconds===3) playBeep();
-      seconds--; updateTimer();
-    } else if(++current < plan.length){
-      seconds = plan[current].time;
-      updatePhase(plan[current].name); updateTimer();
-    } else clearInterval(timer);
+    if(seconds>0){ if(seconds===3) playBeep(); seconds--; updateTimer(); }
+    else if(++current<plan.length){ seconds=plan[current].time; updatePhaseUI(); updateTimer();}
+    else clearInterval(timer);
   },1000);
 }
 function pause(){ clearInterval(timer); }
 function reset(){ clearInterval(timer); confirmProgram(); }
 
+function updateTimer(){
+  const m=String(Math.floor(seconds/60)).padStart(2,"0"),
+        s=String(seconds%60).padStart(2,"0");
+  document.getElementById("time").textContent = `${m}:${s}`;
+  document.getElementById("bar").style.width = `${100 - Math.floor((seconds/plan[current].time)*100)}%`;
+}
+
 // Beep
 function playBeep(){
   try{
-    const ctx = new (window.AudioContext||window.webkitAudioContext)();
-    const o = ctx.createOscillator(), g = ctx.createGain();
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const o=ctx.createOscillator(), g=ctx.createGain();
     o.frequency.value=1000; g.gain.value=0.1;
     o.connect(g); g.connect(ctx.destination);
     o.start(); o.stop(ctx.currentTime+0.2);
-  } catch{}
+  }catch{}
 }
 
-// On DOM load
+// DOM loaded
 window.addEventListener("DOMContentLoaded",()=>{
-  // Populate dropdown
-  const labels = {
-    kraft: "Kraftausdauer-Programm",
-    anaerob: "Anaerobes Intervalltraining",
-    vo2: "VO₂max-Training",
-    regen: "Regenerationsprogramm",
-    hiit: "HIIT-Programm",
-    grund: "Grundkonditionstraining"
+  const labels={
+    kraft:"Kraftausdauer-Programm",
+    anaerob:"Anaerobes Intervalltraining",
+    vo2:"VO₂max-Training",
+    regen:"Regenerationsprogramm",
+    hiit:"HIIT-Programm",
+    grund:"Grundkonditionstraining"
   };
-  const sel = document.getElementById("program");
+  const sel=document.getElementById("program");
   Object.keys(programmes).forEach(k=>{
-    const opt = document.createElement("option");
-    opt.value = k; opt.textContent = labels[k];
+    const opt=document.createElement("option");
+    opt.value=k; opt.textContent=labels[k];
     sel.append(opt);
   });
-
-  // Button handlers
   document.getElementById("confirmBtn").onclick = confirmProgram;
   document.getElementById("editBtn").onclick = () => {
-    if(!currentProgram){
-      alert("Bitte zuerst ein Programm bestätigen!");
-      return;
-    }
+    if(!currentProgram){ alert("Bitte erst Programm bestätigen!"); return; }
     const pw = prompt("Coach-Passwort:");
-    if(pw === COACH_PW){
+    if(pw===COACH_PW){
       document.getElementById("editProgramName").textContent = labels[currentProgram];
-      document.getElementById("editArea").value = JSON.stringify(plan,null,2);
-      document.getElementById("editUI").classList.remove("hidden");
+      const tbody = document.getElementById("editTable");
+      tbody.innerHTML = "";
+      plan.forEach((p,i)=>{
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td><input type="text" value="${p.name}" data-idx="${i}" /></td>
+                        <td><input type="number" value="${p.time}" data-idx="${i}" /></td>
+                        <td><input type="number" value="${p.rpmMin}" data-idx="${i}" /></td>
+                        <td><input type="number" value="${p.rpmMax}" data-idx="${i}" /></td>
+                        <td><input type="number" value="${p.intensityL}" data-idx="${i}" /></td>
+                        <td><input type="number" value="${p.intensityM}" data-idx="${i}" /></td>
+                        <td><input type="number" value="${p.intensityH}" data-idx="${i}" /></td>`;
+        tbody.append(tr);
+      });
+      document.getElementById("editForm").classList.remove("hidden");
       document.getElementById("trainingUI").classList.add("hidden");
-    } else if(pw !== null){
+    } else if(pw!==null) {
       alert("Falsches Passwort!");
     }
   };
-  document.getElementById("saveEdit").onclick = ()=>{
-    try{
-      const updated = JSON.parse(document.getElementById("editArea").value);
-      programmes[currentProgram] = updated;
-      alert("Programm gespeichert!");
-      document.getElementById("editUI").classList.add("hidden");
-      confirmProgram();
-    } catch {
-      alert("Ungültiges JSON!");
-    }
+  document.getElementById("saveBtn").onclick = ()=>{
+    document.querySelectorAll("#editTable input").forEach(inp=>{
+      const idx = +inp.dataset.idx, name=inp.tagName==="INPUT" && inp.type==="text" ? "name" : inp.getAttribute("name")===null ? inp.parentElement.cellIndex===0 ? "name" : inp.parentElement.cellIndex===1 ? "time" : inp.getAttribute("name") : inp.getAttribute("name");
+      // better differentiate by column
+    });
+    // Instead, map all inputs by cell index:
+    document.querySelectorAll("#editTable tr").forEach((tr,row)=>{
+      const inputs = tr.querySelectorAll("input");
+      programmes[currentProgram][row].name = inputs[0].value;
+      programmes[currentProgram][row].time = Number(inputs[1].value);
+      programmes[currentProgram][row].rpmMin = Number(inputs[2].value);
+      programmes[currentProgram][row].rpmMax = Number(inputs[3].value);
+      programmes[currentProgram][row].intensityL = Number(inputs[4].value);
+      programmes[currentProgram][row].intensityM = Number(inputs[5].value);
+      programmes[currentProgram][row].intensityH = Number(inputs[6].value);
+    });
+    alert("Programm gespeichert!");
+    document.getElementById("editForm").classList.add("hidden");
+    confirmProgram();
   };
-  document.getElementById("cancelEdit").onclick = ()=>{
-    document.getElementById("editUI").classList.add("hidden");
-    if(currentProgram) document.getElementById("trainingUI").classList.remove("hidden");
+  document.getElementById("cancelBtn").onclick = ()=>{
+    document.getElementById("editForm").classList.add("hidden");
+    document.getElementById("trainingUI").classList.remove("hidden");
   };
 });
 </script>
