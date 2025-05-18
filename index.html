@@ -6,32 +6,29 @@
   <title>EHCB Cardio App</title>
   <style>
     body { font-family: sans-serif; text-align: center; padding: 1rem; background: #f5f5f5; }
-    header { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom:1rem;}
-    img.logo { width: 80px; }
-    h1 { color: #b30000; }
-    .program-buttons { margin-bottom: 1rem; }
+    #controlsPane { margin-bottom: 1rem; }
     .program-buttons button {
       font-size: 1rem; padding: 0.6rem 1rem; margin: 0.3rem;
       background: #b30000; color: #fff; border: none; border-radius: 4px;
       cursor: pointer;
     }
     .program-buttons button:hover { background: #a20000; }
+    .hidden { display: none; }
     .info-grid {
-      display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap:0.5rem;
-      margin:1rem auto; max-width:800px; text-align:center;
+      display: grid; grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap:0.5rem; margin:1rem auto; max-width:800px; text-align:center;
     }
     .header { font-weight:bold; background:#eee; border:1px solid #ccc; padding:6px; }
     .cell { background:#fff; border:1px solid #ccc; padding:6px; }
     .timer { font-size:1.5rem; margin:1rem 0;}
-    .controls button {padding:0.5rem 1rem; font-size:1rem; margin:0.5rem;}
+    .controls button { padding:0.5rem 1rem; font-size:1rem; margin:0.5rem; }
+    table { margin:1rem auto; border-collapse: collapse; width:90%; max-width:800px; }
+    th, td { border:1px solid #ccc; padding:6px; }
+    th { background: #eee; }
   </style>
 </head>
 <body>
-  <header>
-    <img src="logo.png" alt="EHCB Logo" class="logo">
-    <h1>EHCB Cardio App</h1>
-  </header>
-  <div class="controls">
+  <div id="controlsPane">
     <div>Programm wählen:</div>
     <div class="program-buttons" id="programButtons"></div>
     <button id="editBtn">Phasen bearbeiten (Coach)</button>
@@ -67,93 +64,130 @@
   </div>
 <script>
 const COACH_PW="coach123";
-let programmes={},plan=[],currentProgram="",current=0,seconds=0,timer;
-fetch("programmes.json").then(r=>r.json()).then(data=>{programmes=data;init();});
+let programmes={}, plan=[], currentProgram="", current=0, seconds=0, timer;
+
+fetch("programmes.json")
+  .then(r=>r.json())
+  .then(data=>{ programmes=data; init(); });
+
 function init(){
-  const labels={kraft:"Kraft-Ausdauer",anaerob:"Anaerob",vo2:"Vo2max",hiit:"HIIT",interval:"Intervall",grund:"Grundkondition",regen:"Regeneration"};
-  const container=document.getElementById("programButtons");
+  const labels = {
+    kraft:"Kraft-Ausdauer",
+    anaerob:"Anaerob",
+    vo2:"Vo2max",
+    hiit:"HIIT",
+    interval:"Intervall",
+    grund:"Grundkondition",
+    regen:"Regeneration"
+  };
+  const btnContainer = document.getElementById("programButtons");
   for(const key in labels){
-    const btn=document.createElement("button");
-    btn.textContent=labels[key];
-    btn.onclick=()=>selectProgram(key,labels[key]);
-    container.appendChild(btn);
+    const btn = document.createElement("button");
+    btn.textContent = labels[key];
+    btn.onclick = () => selectProgram(key, labels[key]);
+    btnContainer.appendChild(btn);
   }
-  document.getElementById("editBtn").onclick=showEdit;
-  document.getElementById("addPhaseBtn").onclick=addPhase;
-  document.getElementById("saveBtn").onclick=saveEdit;
-  document.getElementById("cancelBtn").onclick=()=>{
+  document.getElementById("editBtn").onclick = showEdit;
+  document.getElementById("addPhaseBtn").onclick = addPhase;
+  document.getElementById("saveBtn").onclick = saveEdit;
+  document.getElementById("cancelBtn").onclick = () => {
     document.getElementById("editForm").classList.add("hidden");
+    document.getElementById("controlsPane").classList.remove("hidden");
     document.getElementById("trainingUI").classList.remove("hidden");
   };
 }
-function selectProgram(key,label){
-  currentProgram=key;plan=programmes[key].map(p=>({name:p.name,time:p.time}));
-  current=0;seconds=plan[0].time;
-  document.getElementById("currentProgramName").textContent=label;
-  document.getElementById("editForm").classList.add("hidden");
+
+function selectProgram(key, label){
+  currentProgram = key;
+  plan = programmes[key].map(p => ({...p}));
+  current = 0; seconds = plan[0].time;
+  document.getElementById("currentProgramName").textContent = label;
+  document.getElementById("controlsPane").classList.remove("hidden");
   document.getElementById("trainingUI").classList.remove("hidden");
+  document.getElementById("editForm").classList.add("hidden");
   updateDisplay();
 }
+
 function phaseInfo(name){
-  const n=name.toLowerCase();
-  const d={rpm:"–",res:"–"};
-  if(n.includes("aufwärmen"))d.rpm="80-90",d.res="60-70%";
-  else if(n.includes("sprint")||n.includes("intervall"))d.rpm="100-120",d.res="90-100%";
-  else if(n.includes("pause")||n.includes("erholung"))d.rpm="60-70",d.res="50-60%";
-  else if(n.includes("cool"))d.rpm="60-80",d.res="40-50%";
-  else d.rpm="80-100",d.res="70-85%";
-  return d;
+  const n = name.toLowerCase();
+  if(n.includes("aufwärmen")) return {rpm:"80-90", res:"60-70%"};
+  if(n.includes("sprint")||n.includes("intervall")) return {rpm:"100-120", res:"90-100%"};
+  if(n.includes("pause")||n.includes("erholung")) return {rpm:"60-70", res:"50-60%"};
+  if(n.includes("cool")) return {rpm:"60-80", res:"40-50%"};
+  return {rpm:"–", res:"–"};
 }
+
 function updateDisplay(){
-  const p=plan[current],info=phaseInfo(p.name);
-  document.getElementById("desc").textContent=p.name;
-  document.getElementById("dur").textContent=p.time;
-  document.getElementById("rpm").textContent=info.rpm;
-  document.getElementById("res").textContent=info.res;
-  document.getElementById("time").textContent=String(Math.floor(seconds/60)).padStart(2,"0")+":"+
+  const p = plan[current], info=phaseInfo(p.name);
+  document.getElementById("desc").textContent = p.name;
+  document.getElementById("dur").textContent = p.time;
+  document.getElementById("rpm").textContent = info.rpm;
+  document.getElementById("res").textContent = info.res;
+  document.getElementById("time").textContent =
+    String(Math.floor(seconds/60)).padStart(2,"0")+":"+
     String(seconds%60).padStart(2,"0");
 }
+
 function start(){
-  clearInterval(timer);timer=setInterval(()=>{
-    if(seconds>0){seconds--;updateDisplay();}
-    else if(++current<plan.length){seconds=plan[current].time;updateDisplay();}
-    else clearInterval(timer);
+  clearInterval(timer);
+  timer = setInterval(()=>{
+    if(seconds>0){ seconds--; updateDisplay(); }
+    else if(++current<plan.length){
+      seconds = plan[current].time;
+      updateDisplay();
+    } else clearInterval(timer);
   },1000);
 }
-function pause(){clearInterval(timer);}
-function reset(){clearInterval(timer);selectProgram(currentProgram,document.getElementById("currentProgramName").textContent);}
+function pause(){ clearInterval(timer); }
+function reset(){
+  clearInterval(timer);
+  selectProgram(currentProgram, document.getElementById("currentProgramName").textContent);
+}
+
 function showEdit(){
-  if(!currentProgram){alert("Bitte Programm wählen!");return;}
-  const pw=prompt("Coach-Passwort:");
-  if(pw!==COACH_PW){if(pw)alert("Falsches Passwort!");return;}
-  document.getElementById("editProgramName").textContent=document.getElementById("currentProgramName").textContent;
-  const tbody=document.getElementById("editTable");tbody.innerHTML="";
-  plan.forEach((p,i)=>{
-    const tr=document.createElement("tr");
-    tr.innerHTML=`<td><input type="text" value="${p.name}" data-idx="${i}"></td>
-                  <td><input type="number" value="${p.time}" data-idx="${i}"></td>
-                  <td><button data-idx="${i}" class="del">Löschen</button></td>`;
+  if(!currentProgram){ alert("Bitte Programm wählen!"); return; }
+  const pw = prompt("Coach-Passwort:");
+  if(pw !== COACH_PW){ if(pw) alert("Falsches Passwort!"); return; }
+  document.getElementById("controlsPane").classList.add("hidden");
+  document.getElementById("trainingUI").classList.add("hidden");
+  document.getElementById("editProgramName").textContent = document.getElementById("currentProgramName").textContent;
+  const tbody = document.getElementById("editTable");
+  tbody.innerHTML = "";
+  plan.forEach((p,i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td><input type="text" value="${p.name}" data-idx="${i}"></td>
+                    <td><input type="number" value="${p.time}" data-idx="${i}"></td>
+                    <td><button data-idx="${i}" class="del">Löschen</button></td>`;
     tbody.appendChild(tr);
   });
-  document.querySelectorAll(".del").forEach(btn=>btn.onclick=e=>{
-    plan.splice(+e.target.dataset.idx,1);showEdit();
+  document.querySelectorAll(".del").forEach(btn => {
+    btn.onclick = e => {
+      plan.splice(+e.target.dataset.idx,1);
+      showEdit();
+    };
   });
-  document.getElementById("trainingUI").classList.add("hidden");
   document.getElementById("editForm").classList.remove("hidden");
 }
+
 function addPhase(){
-  plan.push({name:"Neue Phase",time:60});showEdit();
+  plan.push({name:"Neue Phase", time:60});
+  showEdit();
 }
+
 function saveEdit(){
-  document.querySelectorAll("#editTable input").forEach(inp=>{
-    const i=+inp.dataset.idx;
-    if(inp.type==="text")plan[i].name=inp.value;
-    else plan[i].time=Number(inp.value);
+  document.querySelectorAll("#editTable input").forEach(inp => {
+    const i = +inp.dataset.idx;
+    if(inp.type === "text") plan[i].name = inp.value;
+    else plan[i].time = Number(inp.value);
   });
-  programmes[currentProgram]=plan.map(p=>({...p}));
+  programmes[currentProgram] = plan.map(p => ({...p}));
   alert("Gespeichert!");
-  selectProgram(currentProgram,document.getElementById("currentProgramName").textContent);
+  // Close edit form and show controls + training
+  document.getElementById("editForm").classList.add("hidden");
+  document.getElementById("controlsPane").classList.remove("hidden");
+  document.getElementById("trainingUI").classList.remove("hidden");
 }
+
 </script>
 </body>
 </html>

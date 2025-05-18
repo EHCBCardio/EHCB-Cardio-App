@@ -197,6 +197,10 @@
       "time": 120
     },
     {
+      "name": "Phase 5",
+      "time": 240
+    },
+    {
       "name": "Cool-Down",
       "time": 600
     }
