@@ -3,184 +3,68 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>EHCB Cardio App</title>
+  <title>EHCB Cardio App – Kraft-Ausdauer</title>
   <style>
-    body { font-family: sans-serif; text-align: center; padding: 1rem; background: #f5f5f5; }
-    header { display: flex; align-items: center; justify-content: center; gap: 1rem; }
+    body { font-family: sans-serif; text-align: center; padding: 1rem; background: #f5f5f5 }
+    header { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom:1rem;}
     img.logo { width: 80px; }
     h1 { color: #b30000; }
-    .controls { margin: 1rem; }
-    .program-buttons button {
-      font-size: 1rem; padding: 0.6rem 1rem; margin: 0.5rem;
-      background: #b30000; color: #fff; border: none; border-radius: 4px;
-      cursor: pointer;
-    }
-    .program-buttons button:hover { background: #a20000; }
-    .hidden { display: none; }
     .info-grid {
-      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem;
-      margin: 1rem auto; max-width: 600px; text-align: center;
+      display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap:0.5rem;
+      margin:1rem auto; max-width:800px; text-align:center;
     }
-    .info-grid .header { font-weight: bold; }
-    .info-grid .cell { padding: 0.5rem; background: #fff; border-radius: 4px; }
-    .timer { font-size: 2rem; margin: 1rem 0; }
-    .progress { width: 80%; height: 16px; background: #ddd; margin: 0.5rem auto; border-radius: 8px; overflow: hidden; }
-    .bar { height: 100%; background: #b30000; width: 0%; transition: width 1s linear; }
-    table { margin: 1rem auto; width: 90%; max-width: 600px; border-collapse: collapse; }
-    th, td { border: 1px solid #ccc; padding: 6px 8px; }
-    th { background: #eee; }
+    .header { font-weight:bold; background:#eee; border:1px solid #ccc; padding:6px; }
+    .cell { background:#fff; border:1px solid #ccc; padding:6px; }
+    .timer { font-size:1.5rem; margin:1rem 0;}
+    .controls button {padding:0.5rem 1rem; font-size:1rem; margin:0.5rem;}
   </style>
 </head>
 <body>
-
   <header>
     <img src="logo.png" alt="EHCB Logo" class="logo">
-    <h1>EHCB Cardio App</h1>
+    <h1>Kraft-Ausdauer-Programm</h1>
   </header>
-
   <div class="controls">
-    <div>Programm wählen:</div>
-    <div class="program-buttons" id="programButtons"></div>
+    <button id="startBtn">Start Programm</button>
     <button id="editBtn">Phasen bearbeiten (Coach)</button>
   </div>
-
-  <div id="trainingUI" class="hidden">
-    <h2 id="currentProgramName">Programm</h2>
+  <div id="trainingUI">
     <div class="info-grid">
       <div class="header">Beschreibung</div>
+      <div class="header">Dauer (s)</div>
       <div class="header">Frequenz RPM</div>
       <div class="header">Widerstand % - HFMax</div>
-      <div class="cell" id="phaseName">-</div>
-      <div class="cell" id="rpm">-</div>
-      <div class="cell" id="resistance">-</div>
+      <div class="cell" id="desc"></div>
+      <div class="cell" id="dur"></div>
+      <div class="cell" id="rpm"></div>
+      <div class="cell" id="res"></div>
     </div>
     <div class="timer" id="time">00:00</div>
-    <div class="progress"><div class="bar" id="bar"></div></div>
-    <div>
-      <button onclick="start()">Start</button>
-      <button onclick="pause()">Pause</button>
-      <button onclick="reset()">Reset</button>
-    </div>
   </div>
-
-  <div id="editForm" class="hidden">
-    <h2>Bearbeite Phasen: <span id="editProgramName"></span></h2>
-    <button id="addPhaseBtn">Phase hinzufügen</button>
-    <table>
-      <thead><tr><th>Name</th><th>Zeit (s)</th><th>Aktion</th></tr></thead>
-      <tbody id="editTable"></tbody>
-    </table>
-    <button id="saveBtn">Speichern</button>
-    <button id="cancelBtn">Abbrechen</button>
-  </div>
-
-<script>
-const COACH_PW = "coach123";
-let programmes = {}, plan = [], currentProgram = null, current=0, seconds=0, timer;
-
-fetch("programmes.json")
-  .then(r => r.json())
-  .then(data => { programmes = data; initUI(); });
-
-function initUI(){
-  const labels = {
-    kraft: "Kraft-Ausdauer",
-    anaerob: "Anaerob",
-    vo2: "Vo2max",
-    hiit: "HIIT",
-    interval: "Intervall",
-    grund: "Grundkondition",
-    regen: "Regeneration"
-  };
-  const container = document.getElementById("programButtons");
-  for(const key in labels){
-    const btn = document.createElement("button");
-    btn.textContent = labels[key];
-    btn.onclick = () => confirmProgram(key, labels[key]);
-    container.appendChild(btn);
-  }
-  document.getElementById("editBtn").onclick = showEdit;
-  document.getElementById("addPhaseBtn").onclick = addPhaseRow;
-  document.getElementById("saveBtn").onclick = saveEdits;
-  document.getElementById("cancelBtn").onclick = () => {
-    document.getElementById("editForm").classList.add("hidden");
-    if(currentProgram) document.getElementById("trainingUI").classList.remove("hidden");
-  };
+  <script>
+const plan = JSON.parse(`${json.dumps(programmes["kraft"])}`);
+let idx=0, seconds=plan[0].time, timer;
+function updateUI(){
+  const p = plan[idx];
+  document.getElementById("desc").textContent = p.description;
+  document.getElementById("dur").textContent = p.time;
+  document.getElementById("rpm").textContent = p.rpm;
+  document.getElementById("res").textContent = p.resistance;
+  document.getElementById("time").textContent =
+    String(Math.floor(seconds/60)).padStart(2,"0")+":"+
+    String(seconds%60).padStart(2,"0");
 }
-
-function confirmProgram(key,label){
-  currentProgram = key;
-  plan = programmes[key].map(p=>({...p}));
-  current = 0; seconds = plan[0].time;
-  document.getElementById("currentProgramName").textContent = label;
-  document.getElementById("editForm").classList.add("hidden");
-  document.getElementById("trainingUI").classList.remove("hidden");
-  updatePhaseInfo();
-  updateTimer();
-}
-
-function updatePhaseInfo(){
-  const p = plan[current];
-  document.getElementById("phaseName").textContent = p.name;
-  document.getElementById("rpm").textContent = p.rpmMin + "–" + p.rpmMax;
-  document.getElementById("resistance").textContent = (p.intensityL !== undefined ? p.intensityL + "–" + p.intensityH + "%" : "-");
-}
-
-function updateTimer(){
-  const m = String(Math.floor(seconds/60)).padStart(2,"0"),
-        s = String(seconds%60).padStart(2,"0");
-  document.getElementById("time").textContent = m + ":" + s;
-  document.getElementById("bar").style.width = (100 - Math.floor((seconds/plan[current].time)*100)) + "%";
-}
-
 function start(){
   clearInterval(timer);
+  updateUI();
   timer = setInterval(()=>{
-    if(seconds>0){ seconds--; updateTimer(); }
-    else if(++current<plan.length){ seconds=plan[current].time; updatePhaseInfo(); updateTimer();}
+    if(seconds>0){ seconds--; updateUI(); }
+    else if(++idx<plan.length){ seconds=plan[idx].time; updateUI(); }
     else clearInterval(timer);
   },1000);
 }
-function pause(){ clearInterval(timer); }
-function reset(){ clearInterval(timer); confirmProgram(currentProgram, document.getElementById("currentProgramName").textContent); }
-
-function showEdit(){
-  if(!currentProgram){ alert("Bitte erst Programm wählen!"); return; }
-  const pw = prompt("Coach-Passwort:");
-  if(pw!==COACH_PW){ if(pw) alert("Falsches Passwort!"); return; }
-  document.getElementById("editProgramName").textContent = document.getElementById("currentProgramName").textContent;
-  const tbody = document.getElementById("editTable"); tbody.innerHTML="";
-  plan.forEach((p,i)=>{
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td><input type="text" value="${p.name}" data-idx="${i}"></td>
-                    <td><input type="number" value="${p.time}" data-idx="${i}"></td>
-                    <td><button data-idx="${i}" class="delBtn">Löschen</button></td>`;
-    tbody.appendChild(tr);
-  });
-  document.querySelectorAll(".delBtn").forEach(btn=>{
-    btn.onclick = e => {
-      plan.splice(+e.target.dataset.idx,1);
-      showEdit();
-    };
-  });
-  document.getElementById("trainingUI").classList.add("hidden");
-  document.getElementById("editForm").classList.remove("hidden");
-}
-
-function addPhaseRow(){
-  plan.push({name:"Neue Phase",time:60});
-  showEdit();
-}
-
-function saveEdits(){ document.querySelectorAll("#editTable input").forEach(inp=>{
-      const i = +inp.dataset.idx;
-      if(inp.type==="text") plan[i].name = inp.value;
-      else plan[i].time = Number(inp.value);
-    });
-    programmes[currentProgram] = plan.map(p=>({...p}));
-    alert("Phasen gespeichert!");
-    confirmProgram(currentProgram, document.getElementById("currentProgramName").textContent);
-}
-</script>
+document.getElementById("startBtn").onclick = start;
+updateUI();
+  </script>
 </body>
 </html>
