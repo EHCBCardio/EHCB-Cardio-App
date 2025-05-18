@@ -4,19 +4,196 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>EHCB Spinning Cardio App</title>
-
-  <!-- PWA manifest -->
-  <link rel="manifest" href="manifest.json">
-  <!-- Fallback favicon -->
-  <link rel="icon" type="image/png" href="icons/logo-192.png">
-  <!-- iOS home screen icon -->
-  <link rel="apple-touch-icon" href="icons/logo-192.png">
-  <!-- Theme color -->
-  <meta name="theme-color" content="#b30000">
-
-  <!-- Deine bisherigen Styles und Scripts bleiben unverändert -->
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 1rem; background: #f5f5f5; }
+    header { margin-bottom: 1rem; }
+    header img { width: 80px; vertical-align: middle; }
+    header h1 { display: inline-block; margin-left: 0.5rem; vertical-align: middle; color: #b30000; font-size: 2rem; }
+    #controlsPane { margin-bottom: 1rem; }
+    .program-buttons button {
+      display: inline-block;
+      font-size: 1.1rem;
+      padding: 0.8rem 1.2rem;
+      margin: 0.3rem;
+      min-width: 120px;
+      background-color: #b30000 !important;
+      color: #fff !important;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+    }
+    .program-buttons button:hover { background-color: #a20000 !important; }
+    .hidden { display: none; }
+    .info-grid {
+      display: grid; grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap:0.5rem; margin:1rem auto; max-width:800px; text-align:center;
+    }
+    .header { font-weight:bold; background:#eee; border:1px solid #ccc; padding:6px; }
+    .cell { background:#fff; border:1px solid #ccc; padding:6px; }
+    .timer { font-size:1.5rem; margin:1rem 0;}
+    #nextPhase { font-style: italic; margin-top: 0.5rem; }
+    .controls button {
+      font-size: 1.2rem; padding: 0.8rem 1.2rem; margin: 0.5rem;
+      background: #fff; border: 1px solid #ccc; border-radius: 4px;
+      cursor: pointer;
+    }
+    .controls button:hover { background: #eee; }
+    table { margin:1rem auto; border-collapse: collapse; width:90%; max-width:800px; }
+    th, td { border:1px solid #ccc; padding:6px; }
+    th { background: #eee; }
+    #phaseList tbody tr.active { background: rgba(179,0,0,0.1); }
+    input[type=text], input[type=number] { width: 100%; box-sizing: border-box; }
+  </style>
 </head>
 <body>
-  <!-- Hier kommt dein bestehendes HTML/JS aus v14 unverändert hin -->
+  <header>
+    <img src="logo.png" alt="EHCB Logo">
+    <h1>EHCB Spinning Cardio App</h1>
+  </header>
+  <div id="controlsPane" class="controls">
+    <div>Programm wählen:</div>
+    <div class="program-buttons">
+      <button onclick="selectProgram('kraft','Kraft-Ausdauer')">Kraft-Ausdauer</button>
+      <button onclick="selectProgram('anaerob','Anaerob')">Anaerob</button>
+      <button onclick="selectProgram('vo2','Vo2max')">Vo2max</button>
+      <button onclick="selectProgram('hiit','HIIT')">HIIT</button>
+      <button onclick="selectProgram('interval','Intervall')">Intervall</button>
+      <button onclick="selectProgram('grund','Grundkondition')">Grundkondition</button>
+      <button onclick="selectProgram('regen','Regeneration')">Regeneration</button>
+    </div>
+    <button id="editBtn" onclick="showEdit()">Phasen bearbeiten (Coach)</button>
+  </div>
+  <div id="trainingUI" class="hidden">
+    <h2 id="currentProgramName">Programm</h2>
+    <div class="info-grid">
+      <div class="header">Beschreibung</div>
+      <div class="header">Dauer (s)</div>
+      <div class="header">Frequenz RPM</div>
+      <div class="header">Widerstand % - HFMax</div>
+      <div class="cell" id="desc">-</div>
+      <div class="cell" id="dur">-</div>
+      <div class="cell" id="rpm">-</div>
+      <div class="cell" id="res">-</div>
+    </div>
+    <div class="timer" id="time">00:00</div>
+    <div id="nextPhase">Nächste Phase: -</div>
+    <h3>Alle Phasen:</h3>
+    <table id="phaseList">
+      <thead>
+        <tr>
+          <th>#</th><th>Beschreibung</th><th>Dauer (s)</th><th>RPM</th><th>HFMax</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div class="controls">
+      <button onclick="start()">Start</button>
+      <button onclick="pause()">Pause</button>
+      <button onclick="reset()">Reset</button>
+    </div>
+  </div>
+  <div id="editForm" class="hidden">
+    <h2>Bearbeite Phasen: <span id="editProgramName"></span></h2>
+    <button id="addPhaseBtn">Phase hinzufügen</button>
+    <table>
+      <thead><tr><th>Name</th><th>Zeit (s)</th><th>Frequenz RPM</th><th>Widerstand % - HFMax</th><th>Aktion</th></tr></thead>
+      <tbody id="editTable"></tbody>
+    </table>
+    <div class="controls">
+      <button id="saveBtn" onclick="saveEdit()">Speichern</button>
+      <button id="cancelBtn" onclick="cancelEdit()">Abbrechen</button>
+    </div>
+  </div>
+<script>
+const COACH_PW="coach123";
+let programmes={},plan=[],currentProgram="",current=0,seconds=0,timer;
+const audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+function playBeep(){const o=audioCtx.createOscillator();o.frequency.value=1000;o.connect(audioCtx.destination);o.start();setTimeout(()=>o.stop(),150);}
+const gong=new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"),
+      applause=new Audio("https://actions.google.com/sounds/v1/human/applause.ogg");
+fetch("programmes.json").then(r=>r.json()).then(data=>programmes=data);
+function selectProgram(key,label){
+  currentProgram=key; plan=(programmes[key]||[]).map(p=>({...p}));
+  current=0; seconds=plan[0]?.time||0;
+  document.getElementById("currentProgramName").textContent=label;
+  document.getElementById("controlsPane").classList.remove("hidden");
+  document.getElementById("trainingUI").classList.remove("hidden");
+  document.getElementById("editForm").classList.add("hidden");
+  updateDisplay();
+}
+function updateDisplay(){
+  const p=plan[current]||{};
+  document.getElementById("desc").textContent=p.name||"-";
+  document.getElementById("dur").textContent=p.time||"-";
+  document.getElementById("rpm").textContent=p.rpm||"-";
+  document.getElementById("res").textContent=p.res||"-";
+  document.getElementById("time").textContent=
+    String(Math.floor(seconds/60)).padStart(2,"0")+":"+String(seconds%60).padStart(2,"0");
+  const nx=plan[current+1]||{};
+  document.getElementById("nextPhase").textContent="Nächste Phase: "+(nx.name||"Ende");
+  renderPhaseList();
+}
+function renderPhaseList(){
+  const tbody=document.querySelector("#phaseList tbody");
+  tbody.innerHTML="";
+  plan.forEach((p,i)=>{
+    const tr=document.createElement("tr");
+    if(i===current) tr.classList.add("active");
+    tr.innerHTML=`<td>${i+1}</td><td>${p.name}</td><td>${p.time}</td><td>${p.rpm}</td><td>${p.res}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+function start(){
+  if(audioCtx.state==="suspended") audioCtx.resume();
+  clearInterval(timer);
+  timer=setInterval(()=>{
+    if(seconds>0){
+      seconds--; if(seconds>0&&seconds<=3) playBeep(); updateDisplay();
+    } else if(++current<plan.length){
+      seconds=plan[current].time; updateDisplay();
+    } else {
+      clearInterval(timer); gong.play(); setTimeout(()=>applause.play(),1200);
+    }
+  },1000);
+}
+function pause(){ clearInterval(timer); }
+function reset(){ clearInterval(timer); selectProgram(currentProgram,document.getElementById("currentProgramName").textContent); }
+function showEdit(){
+  if(!currentProgram){ alert("Bitte Programm wählen!"); return; }
+  const pw=prompt("Coach-Passwort:"); if(pw!==COACH_PW){ if(pw) alert("Falsches Passwort!"); return; }
+  document.getElementById("controlsPane").classList.add("hidden");
+  document.getElementById("trainingUI").classList.add("hidden");
+  document.getElementById("editProgramName").textContent=document.getElementById("currentProgramName").textContent;
+  renderEditTable(); document.getElementById("editForm").classList.remove("hidden");
+}
+function renderEditTable(){
+  const tbody=document.getElementById("editTable"); tbody.innerHTML="";
+  plan.forEach((p,i)=>{
+    const tr=document.createElement("tr"); tr.innerHTML=
+      `<td><input type="text" data-idx="${i}" data-field="name" value="${p.name}"></td>`+
+      `<td><input type="number" data-idx="${i}" data-field="time" value="${p.time}"></td>`+
+      `<td><input type="text" data-idx="${i}" data-field="rpm" value="${p.rpm||''}"></td>`+
+      `<td><input type="text" data-idx="${i}" data-field="res" value="${p.res||''}"></td>`+
+      `<td><button class="del" data-idx="${i}">Löschen</button></td>`;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll(".del").forEach(btn=>btn.onclick=e=>{ plan.splice(+e.target.dataset.idx,1); renderEditTable(); });
+}
+function saveEdit(){
+  cancelEdit();
+  document.querySelectorAll("#editTable input").forEach(inp=>{
+    plan[+inp.dataset.idx][inp.dataset.field]=inp.value;
+  });
+  programmes[currentProgram]=plan.map(p=>({...p}));
+  alert("Phasen gespeichert!");
+  updateDisplay();
+}
+function cancelEdit(){
+  document.getElementById("editForm").classList.add("hidden");
+  document.getElementById("controlsPane").classList.remove("hidden");
+  document.getElementById("trainingUI").classList.remove("hidden");
+}
+</script>
 </body>
 </html>
