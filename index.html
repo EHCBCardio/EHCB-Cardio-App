@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8"/>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>EHCB Cardio App</title>
   <style>
@@ -25,6 +25,7 @@
     table { margin:1rem auto; border-collapse: collapse; width:90%; max-width:800px; }
     th, td { border:1px solid #ccc; padding:6px; }
     th { background: #eee; }
+    input[type=text], input[type=number] { width: 100%; box-sizing: border-box; }
   </style>
 </head>
 <body>
@@ -56,19 +57,34 @@
     <h2>Bearbeite Phasen: <span id="editProgramName"></span></h2>
     <button id="addPhaseBtn">Phase hinzufügen</button>
     <table>
-      <thead><tr><th>Name</th><th>Zeit (s)</th><th>Aktion</th></tr></thead>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Zeit (s)</th>
+          <th>Frequenz RPM</th>
+          <th>Widerstand % - HFMax</th>
+          <th>Aktion</th>
+        </tr>
+      </thead>
       <tbody id="editTable"></tbody>
     </table>
     <button id="saveBtn">Speichern</button>
     <button id="cancelBtn">Abbrechen</button>
   </div>
 <script>
-const COACH_PW="coach123";
-let programmes={}, plan=[], currentProgram="", current=0, seconds=0, timer;
+const COACH_PW = "coach123";
+const LS_KEY = "ehcb_programmes";
+let programmes = {}, plan = [], currentProgram = "", current=0, seconds=0, timer;
 
-fetch("programmes.json")
-  .then(r=>r.json())
-  .then(data=>{ programmes=data; init(); });
+function loadData(){
+  fetch("programmes.json")
+    .then(r=>r.json())
+    .then(data=>{
+      const stored = localStorage.getItem(LS_KEY);
+      programmes = stored ? JSON.parse(stored) : data;
+      init();
+    });
+}
 
 function init(){
   const labels = {
@@ -81,26 +97,28 @@ function init(){
     regen:"Regeneration"
   };
   const btnContainer = document.getElementById("programButtons");
+  btnContainer.innerHTML="";
   for(const key in labels){
     const btn = document.createElement("button");
     btn.textContent = labels[key];
-    btn.onclick = () => selectProgram(key, labels[key]);
+    btn.onclick = ()=>selectProgram(key, labels[key]);
     btnContainer.appendChild(btn);
   }
   document.getElementById("editBtn").onclick = showEdit;
   document.getElementById("addPhaseBtn").onclick = addPhase;
   document.getElementById("saveBtn").onclick = saveEdit;
-  document.getElementById("cancelBtn").onclick = () => {
-    document.getElementById("editForm").classList.add("hidden");
-    document.getElementById("controlsPane").classList.remove("hidden");
-    document.getElementById("trainingUI").classList.remove("hidden");
-  };
+  document.getElementById("cancelBtn").onclick = cancelEdit;
 }
 
 function selectProgram(key, label){
   currentProgram = key;
-  plan = programmes[key].map(p => ({...p}));
-  current = 0; seconds = plan[0].time;
+  plan = (programmes[key] || []).map(p => ({
+    name: p.name,
+    time: p.time,
+    rpm: p.rpm || "",
+    res: p.res || ""
+  }));
+  current = 0; seconds = plan[0]?.time || 0;
   document.getElementById("currentProgramName").textContent = label;
   document.getElementById("controlsPane").classList.remove("hidden");
   document.getElementById("trainingUI").classList.remove("hidden");
@@ -108,21 +126,12 @@ function selectProgram(key, label){
   updateDisplay();
 }
 
-function phaseInfo(name){
-  const n = name.toLowerCase();
-  if(n.includes("aufwärmen")) return {rpm:"80-90", res:"60-70%"};
-  if(n.includes("sprint")||n.includes("intervall")) return {rpm:"100-120", res:"90-100%"};
-  if(n.includes("pause")||n.includes("erholung")) return {rpm:"60-70", res:"50-60%"};
-  if(n.includes("cool")) return {rpm:"60-80", res:"40-50%"};
-  return {rpm:"–", res:"–"};
-}
-
 function updateDisplay(){
-  const p = plan[current], info=phaseInfo(p.name);
-  document.getElementById("desc").textContent = p.name;
-  document.getElementById("dur").textContent = p.time;
-  document.getElementById("rpm").textContent = info.rpm;
-  document.getElementById("res").textContent = info.res;
+  const p = plan[current] || {};
+  document.getElementById("desc").textContent = p.name || "-";
+  document.getElementById("dur").textContent = p.time || "-";
+  document.getElementById("rpm").textContent = p.rpm || "-";
+  document.getElementById("res").textContent = p.res || "-";
   document.getElementById("time").textContent =
     String(Math.floor(seconds/60)).padStart(2,"0")+":"+
     String(seconds%60).padStart(2,"0");
@@ -139,10 +148,7 @@ function start(){
   },1000);
 }
 function pause(){ clearInterval(timer); }
-function reset(){
-  clearInterval(timer);
-  selectProgram(currentProgram, document.getElementById("currentProgramName").textContent);
-}
+function reset(){ clearInterval(timer); selectProgram(currentProgram, document.getElementById("currentProgramName").textContent); }
 
 function showEdit(){
   if(!currentProgram){ alert("Bitte Programm wählen!"); return; }
@@ -151,43 +157,55 @@ function showEdit(){
   document.getElementById("controlsPane").classList.add("hidden");
   document.getElementById("trainingUI").classList.add("hidden");
   document.getElementById("editProgramName").textContent = document.getElementById("currentProgramName").textContent;
-  const tbody = document.getElementById("editTable");
-  tbody.innerHTML = "";
-  plan.forEach((p,i) => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td><input type="text" value="${p.name}" data-idx="${i}"></td>
-                    <td><input type="number" value="${p.time}" data-idx="${i}"></td>
-                    <td><button data-idx="${i}" class="del">Löschen</button></td>`;
-    tbody.appendChild(tr);
-  });
-  document.querySelectorAll(".del").forEach(btn => {
-    btn.onclick = e => {
-      plan.splice(+e.target.dataset.idx,1);
-      showEdit();
-    };
-  });
+  renderEditTable();
   document.getElementById("editForm").classList.remove("hidden");
 }
 
+function renderEditTable(){
+  const tbody = document.getElementById("editTable");
+  tbody.innerHTML = "";
+  plan.forEach((p,i)=>{
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><input type="text" data-idx="${i}" data-field="name" value="${p.name}"></td>
+      <td><input type="number" data-idx="${i}" data-field="time" value="${p.time}"></td>
+      <td><input type="text" data-idx="${i}" data-field="rpm" value="${p.rpm}"></td>
+      <td><input type="text" data-idx="${i}" data-field="res" value="${p.res}"></td>
+      <td><button class="del" data-idx="${i}">Löschen</button></td>`;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll(".del").forEach(btn=>{
+    btn.onclick = e=>{
+      plan.splice(+e.target.dataset.idx,1);
+      renderEditTable();
+    };
+  });
+}
+
 function addPhase(){
-  plan.push({name:"Neue Phase", time:60});
-  showEdit();
+  plan.push({name:"Neue Phase",time:60,rpm:"",res:""});
+  renderEditTable();
 }
 
 function saveEdit(){
-  document.querySelectorAll("#editTable input").forEach(inp => {
+  document.querySelectorAll("#editTable input").forEach(inp=>{
     const i = +inp.dataset.idx;
-    if(inp.type === "text") plan[i].name = inp.value;
-    else plan[i].time = Number(inp.value);
+    const f = inp.dataset.field;
+    plan[i][f] = inp.value;
   });
-  programmes[currentProgram] = plan.map(p => ({...p}));
-  alert("Gespeichert!");
-  // Close edit form and show controls + training
+  programmes[currentProgram] = plan.map(p=>({...p}));
+  localStorage.setItem(LS_KEY, JSON.stringify(programmes));
+  alert("Phasen gespeichert!");
+  cancelEdit();
+}
+
+function cancelEdit(){
   document.getElementById("editForm").classList.add("hidden");
   document.getElementById("controlsPane").classList.remove("hidden");
   document.getElementById("trainingUI").classList.remove("hidden");
 }
 
+loadData();
 </script>
 </body>
 </html>
