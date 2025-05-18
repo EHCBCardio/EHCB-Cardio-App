@@ -2,5 +2,13 @@
   "name": "EHCB Cardio App",
   "short_name": "EHCB Cardio",
   "start_url": ".",
-  "display": "standalone"
+  "display": "standalone",
+  "theme_color": "#f0c038",
+  "background_color": "#cf3831",
+  "lang": "de",
+  "orientation": "portrait",
+  "categories": [
+    "fitness",
+    "sports"
+  ]
 }
