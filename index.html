@@ -17,7 +17,13 @@
     }
     .program-buttons button:hover { background: #a20000; }
     .hidden { display: none; }
-    .phase, .info, .timer { margin: 0.5rem 0; }
+    .info-grid {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem;
+      margin: 1rem auto; max-width: 600px; text-align: center;
+    }
+    .info-grid .header { font-weight: bold; }
+    .info-grid .cell { padding: 0.5rem; background: #fff; border-radius: 4px; }
+    .timer { font-size: 2rem; margin: 1rem 0; }
     .progress { width: 80%; height: 16px; background: #ddd; margin: 0.5rem auto; border-radius: 8px; overflow: hidden; }
     .bar { height: 100%; background: #b30000; width: 0%; transition: width 1s linear; }
     table { margin: 1rem auto; width: 90%; max-width: 600px; border-collapse: collapse; }
@@ -40,8 +46,15 @@
 
   <div id="trainingUI" class="hidden">
     <h2 id="currentProgramName">Programm</h2>
-    <div class="phase" id="phaseName">Bereit</div>
-    <div class="info" id="time">00:00</div>
+    <div class="info-grid">
+      <div class="header">Beschreibung</div>
+      <div class="header">Frequenz RPM</div>
+      <div class="header">Widerstand % - HFMax</div>
+      <div class="cell" id="phaseName">-</div>
+      <div class="cell" id="rpm">-</div>
+      <div class="cell" id="resistance">-</div>
+    </div>
+    <div class="timer" id="time">00:00</div>
     <div class="progress"><div class="bar" id="bar"></div></div>
     <div>
       <button onclick="start()">Start</button>
@@ -65,7 +78,6 @@
 const COACH_PW = "coach123";
 let programmes = {}, plan = [], currentProgram = null, current=0, seconds=0, timer;
 
-// Load programme definitions
 fetch("programmes.json")
   .then(r => r.json())
   .then(data => { programmes = data; initUI(); });
@@ -96,34 +108,36 @@ function initUI(){
   };
 }
 
-function confirmProgram(key, label){
+function confirmProgram(key,label){
   currentProgram = key;
   plan = programmes[key].map(p=>({...p}));
   current = 0; seconds = plan[0].time;
   document.getElementById("currentProgramName").textContent = label;
-  document.getElementById("programButtons").parentElement.classList.remove("hidden");
   document.getElementById("editForm").classList.add("hidden");
   document.getElementById("trainingUI").classList.remove("hidden");
-  updatePhase();
-  updateBar();
+  updatePhaseInfo();
+  updateTimer();
 }
 
-function updatePhase(){
-  document.getElementById("phaseName").textContent = plan[current].name;
+function updatePhaseInfo(){
+  const p = plan[current];
+  document.getElementById("phaseName").textContent = p.name;
+  document.getElementById("rpm").textContent = p.rpmMin + "–" + p.rpmMax;
+  document.getElementById("resistance").textContent = (p.intensityL !== undefined ? p.intensityL + "–" + p.intensityH + "%" : "-");
 }
-function updateBar(){
-  document.getElementById("time").textContent = 
-    String(Math.floor(seconds/60)).padStart(2,"0")+":"+
-    String(seconds%60).padStart(2,"0");
-  document.getElementById("bar").style.width = 
-    (100 - Math.floor((seconds/plan[current].time)*100)) + "%";
+
+function updateTimer(){
+  const m = String(Math.floor(seconds/60)).padStart(2,"0"),
+        s = String(seconds%60).padStart(2,"0");
+  document.getElementById("time").textContent = m + ":" + s;
+  document.getElementById("bar").style.width = (100 - Math.floor((seconds/plan[current].time)*100)) + "%";
 }
 
 function start(){
   clearInterval(timer);
   timer = setInterval(()=>{
-    if(seconds>0){ seconds--; updateBar(); }
-    else if(++current<plan.length){ seconds=plan[current].time; updatePhase(); updateBar(); }
+    if(seconds>0){ seconds--; updateTimer(); }
+    else if(++current<plan.length){ seconds=plan[current].time; updatePhaseInfo(); updateTimer();}
     else clearInterval(timer);
   },1000);
 }
@@ -133,18 +147,17 @@ function reset(){ clearInterval(timer); confirmProgram(currentProgram, document.
 function showEdit(){
   if(!currentProgram){ alert("Bitte erst Programm wählen!"); return; }
   const pw = prompt("Coach-Passwort:");
-  if(pw !== COACH_PW){ if(pw) alert("Falsches Passwort!"); return; }
+  if(pw!==COACH_PW){ if(pw) alert("Falsches Passwort!"); return; }
   document.getElementById("editProgramName").textContent = document.getElementById("currentProgramName").textContent;
-  const tbody = document.getElementById("editTable"); tbody.innerHTML = "";
-  plan.forEach((p,i) => {
+  const tbody = document.getElementById("editTable"); tbody.innerHTML="";
+  plan.forEach((p,i)=>{
     const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td><input type="text" value="${p.name}" data-idx="${i}"></td>
-      <td><input type="number" value="${p.time}" data-idx="${i}"></td>
-      <td><button data-idx="${i}" class="delBtn">Löschen</button></td>`;
+    tr.innerHTML = `<td><input type="text" value="${p.name}" data-idx="${i}"></td>
+                    <td><input type="number" value="${p.time}" data-idx="${i}"></td>
+                    <td><button data-idx="${i}" class="delBtn">Löschen</button></td>`;
     tbody.appendChild(tr);
   });
-  document.querySelectorAll(".delBtn").forEach(btn => {
+  document.querySelectorAll(".delBtn").forEach(btn=>{
     btn.onclick = e => {
       plan.splice(+e.target.dataset.idx,1);
       showEdit();
@@ -159,17 +172,15 @@ function addPhaseRow(){
   showEdit();
 }
 
-function saveEdits(){
-  document.querySelectorAll("#editTable input").forEach(inp => {
-    const i = +inp.dataset.idx;
-    if(inp.type === "text") plan[i].name = inp.value;
-    else plan[i].time = Number(inp.value);
-  });
-  programmes[currentProgram] = plan.map(p => ({...p}));
-  alert("Phasen gespeichert!");
-  confirmProgram(currentProgram, document.getElementById("currentProgramName").textContent);
+function saveEdits(){ document.querySelectorAll("#editTable input").forEach(inp=>{
+      const i = +inp.dataset.idx;
+      if(inp.type==="text") plan[i].name = inp.value;
+      else plan[i].time = Number(inp.value);
+    });
+    programmes[currentProgram] = plan.map(p=>({...p}));
+    alert("Phasen gespeichert!");
+    confirmProgram(currentProgram, document.getElementById("currentProgramName").textContent);
 }
-
 </script>
 </body>
 </html>
