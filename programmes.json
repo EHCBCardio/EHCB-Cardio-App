@@ -1,0 +1,444 @@
+{
+  "kraft": [
+    {
+      "name": "Aufwärmen",
+      "time": 180
+    },
+    {
+      "name": "Aufwärmen",
+      "time": 180
+    },
+    {
+      "name": "Aufwärmen",
+      "time": 120
+    },
+    {
+      "name": "Kurze Antritte",
+      "time": 10
+    },
+    {
+      "name": "Lockern",
+      "time": 50
+    },
+    {
+      "name": "Kurze Antritte",
+      "time": 10
+    },
+    {
+      "name": "Lockern",
+      "time": 50
+    },
+    {
+      "name": "Intervallblock 1",
+      "time": 180
+    },
+    {
+      "name": "Intervallblock 1",
+      "time": 180
+    },
+    {
+      "name": "Intervallblock 1",
+      "time": 180
+    },
+    {
+      "name": "Intervallblock 1",
+      "time": 180
+    },
+    {
+      "name": "Erholung",
+      "time": 120
+    },
+    {
+      "name": "Intervallblock 2",
+      "time": 300
+    },
+    {
+      "name": "Pause",
+      "time": 60
+    },
+    {
+      "name": "Intervallblock 2",
+      "time": 300
+    },
+    {
+      "name": "Pause",
+      "time": 60
+    },
+    {
+      "name": "Intervallblock 2",
+      "time": 300
+    },
+    {
+      "name": "Pause",
+      "time": 60
+    },
+    {
+      "name": "Cool-Down",
+      "time": 300
+    }
+  ],
+  "anaerob": [
+    {
+      "name": "Aufwärmen",
+      "time": 600
+    },
+    {
+      "name": "Sprint 1",
+      "time": 20
+    },
+    {
+      "name": "Pause 1",
+      "time": 40
+    },
+    {
+      "name": "Sprint 2",
+      "time": 20
+    },
+    {
+      "name": "Pause 2",
+      "time": 40
+    },
+    {
+      "name": "Sprint 3",
+      "time": 20
+    },
+    {
+      "name": "Pause 3",
+      "time": 40
+    },
+    {
+      "name": "Sprint 4",
+      "time": 20
+    },
+    {
+      "name": "Pause 4",
+      "time": 40
+    },
+    {
+      "name": "Sprint 5",
+      "time": 20
+    },
+    {
+      "name": "Pause 5",
+      "time": 40
+    },
+    {
+      "name": "Sprint 6",
+      "time": 20
+    },
+    {
+      "name": "Pause 6",
+      "time": 40
+    },
+    {
+      "name": "Sprint 7",
+      "time": 20
+    },
+    {
+      "name": "Pause 7",
+      "time": 40
+    },
+    {
+      "name": "Sprint 8",
+      "time": 20
+    },
+    {
+      "name": "Pause 8",
+      "time": 40
+    },
+    {
+      "name": "Sprint 9",
+      "time": 20
+    },
+    {
+      "name": "Pause 9",
+      "time": 40
+    },
+    {
+      "name": "Sprint 10",
+      "time": 20
+    },
+    {
+      "name": "Pause 10",
+      "time": 40
+    },
+    {
+      "name": "Phase 1",
+      "time": 60
+    },
+    {
+      "name": "Pause",
+      "time": 60
+    },
+    {
+      "name": "Phase 2",
+      "time": 60
+    },
+    {
+      "name": "Pause",
+      "time": 60
+    },
+    {
+      "name": "Phase 3",
+      "time": 60
+    },
+    {
+      "name": "Pause",
+      "time": 60
+    },
+    {
+      "name": "Phase 4",
+      "time": 60
+    },
+    {
+      "name": "Pause",
+      "time": 60
+    },
+    {
+      "name": "Cool-Down",
+      "time": 300
+    }
+  ],
+  "vo2": [
+    {
+      "name": "Aufwärmen",
+      "time": 600
+    },
+    {
+      "name": "Phase 1",
+      "time": 240
+    },
+    {
+      "name": "Pause",
+      "time": 120
+    },
+    {
+      "name": "Phase 2",
+      "time": 240
+    },
+    {
+      "name": "Pause",
+      "time": 120
+    },
+    {
+      "name": "Phase 3",
+      "time": 240
+    },
+    {
+      "name": "Pause",
+      "time": 120
+    },
+    {
+      "name": "Phase 4",
+      "time": 240
+    },
+    {
+      "name": "Pause",
+      "time": 120
+    },
+    {
+      "name": "Phase 5",
+      "time": 240
+    },
+    {
+      "name": "Cool-Down",
+      "time": 600
+    }
+  ],
+  "hiit": [
+    {
+      "name": "Aufwärmen",
+      "time": 600
+    },
+    {
+      "name": "Intervall 1",
+      "time": 45
+    },
+    {
+      "name": "Pause 1",
+      "time": 60
+    },
+    {
+      "name": "Intervall 2",
+      "time": 45
+    },
+    {
+      "name": "Pause 2",
+      "time": 60
+    },
+    {
+      "name": "Intervall 3",
+      "time": 45
+    },
+    {
+      "name": "Pause 3",
+      "time": 60
+    },
+    {
+      "name": "Intervall 4",
+      "time": 45
+    },
+    {
+      "name": "Pause 4",
+      "time": 60
+    },
+    {
+      "name": "Intervall 5",
+      "time": 45
+    },
+    {
+      "name": "Pause 5",
+      "time": 60
+    },
+    {
+      "name": "Intervall 6",
+      "time": 45
+    },
+    {
+      "name": "Pause 6",
+      "time": 60
+    },
+    {
+      "name": "Intervall 7",
+      "time": 45
+    },
+    {
+      "name": "Pause 7",
+      "time": 60
+    },
+    {
+      "name": "Intervall 8",
+      "time": 45
+    },
+    {
+      "name": "Pause 8",
+      "time": 60
+    },
+    {
+      "name": "Intervall 9",
+      "time": 45
+    },
+    {
+      "name": "Pause 9",
+      "time": 60
+    },
+    {
+      "name": "Intervall 10",
+      "time": 45
+    },
+    {
+      "name": "Pause 10",
+      "time": 60
+    },
+    {
+      "name": "Cool-Down",
+      "time": 600
+    }
+  ],
+  "interval": [
+    {
+      "name": "Aufwärmen",
+      "time": 300
+    },
+    {
+      "name": "Intervall 1",
+      "time": 15
+    },
+    {
+      "name": "Pause 1",
+      "time": 15
+    },
+    {
+      "name": "Intervall 2",
+      "time": 15
+    },
+    {
+      "name": "Pause 2",
+      "time": 15
+    },
+    {
+      "name": "Intervall 3",
+      "time": 15
+    },
+    {
+      "name": "Pause 3",
+      "time": 15
+    },
+    {
+      "name": "Intervall 4",
+      "time": 15
+    },
+    {
+      "name": "Pause 4",
+      "time": 15
+    },
+    {
+      "name": "Intervall 5",
+      "time": 15
+    },
+    {
+      "name": "Pause 5",
+      "time": 15
+    },
+    {
+      "name": "Cool-Down",
+      "time": 600
+    }
+  ],
+  "grund": [
+    {
+      "name": "Aufwärmen",
+      "time": 600
+    },
+    {
+      "name": "Phase 1",
+      "time": 2400
+    },
+    {
+      "name": "Phase 2",
+      "time": 900
+    },
+    {
+      "name": "Phase 3",
+      "time": 900
+    },
+    {
+      "name": "Cool-Down",
+      "time": 600
+    }
+  ],
+  "regen": [
+    {
+      "name": "Aufwärmen",
+      "time": 600
+    },
+    {
+      "name": "Phase 1",
+      "time": 300
+    },
+    {
+      "name": "Phase 2",
+      "time": 120
+    },
+    {
+      "name": "Phase 1",
+      "time": 300
+    },
+    {
+      "name": "Phase 2",
+      "time": 120
+    },
+    {
+      "name": "Phase 1",
+      "time": 300
+    },
+    {
+      "name": "Phase 2",
+      "time": 120
+    },
+    {
+      "name": "Cool-Down",
+      "time": 300
+    }
+  ]
+}
