@@ -1,9 +1,124 @@
 <!DOCTYPE html>
-<html lang="de"><head>
-<meta charset="UTF-8"><title>Intervall</title></head>
-<body style="background:#001F4E; color:white; text-align:center; font-family:sans-serif;">
-<h1 style="color:#FFD700;">Intervall</h1>
-<p>Programm 6: Intervall</p>
-<p>(Trainingsstruktur, Timer, RPM, HFmax etc. ist integriert)</p>
-<a href="index.html" style="color:#FFD700;">Zurück</a>
-</body></html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Intervall</title>
+  <style>
+    body { background: #001F4E; color: white; font-family: sans-serif; text-align: center; padding: 2rem; }
+    h1 { color: #FFD700; }
+    table { margin: 1rem auto; background: white; color: black; border-collapse: collapse; width: 90%; }
+    th, td { border: 1px solid #ccc; padding: 0.5rem; font-size: 0.95rem; }
+    .active { background: #C80000; color: white; font-weight: bold; }
+    button { background: #C80000; color: white; padding: 0.8rem 2rem; margin: 1rem; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; }
+    a { color: #FFD700; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <h1>Intervall</h1>
+  <p>Programm 6: Intervalltraining – Sprint / Pause in Intervallen</p>
+
+  <table id="phaseTable">
+    <thead><tr><th>Phase</th><th>Dauer (s)</th><th>Beschreibung</th><th>RPM</th><th>% HFmax</th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <p id="status">Bereit</p>
+  <p id="timer">0</p>
+  <button onclick="startWorkout()">Start</button>
+  <button onclick="stopWorkout()">Pause</button>
+  <button onclick="resetWorkout()">Reset</button><br/>
+  <a href="index.html">Zurück</a>
+
+<script>
+let phases = [
+  { name: "Aufwärmen", duration: 300, desc: "Locker treten", rpm: 90, hf: 75 },
+  { name: "Intervallblock 1", duration: 240, desc: "8×15s Sprint/15s Pause", rpm: 100, hf: 90 },
+  { name: "Pause", duration: 60, desc: "Erholung", rpm: 80, hf: 65 },
+  { name: "Intervallblock 2", duration: 240, desc: "8×15s Sprint/15s Pause", rpm: 100, hf: 90 },
+  { name: "Pause", duration: 60, desc: "Erholung", rpm: 80, hf: 65 },
+  { name: "Intervallblock 3", duration: 240, desc: "8×15s Sprint/15s Pause", rpm: 100, hf: 90 },
+  { name: "Cooldown", duration: 300, desc: "Locker ausfahren", rpm: 70, hf: 60 }
+];
+
+let currentPhase = -1;
+let countdown = 3;
+let timeLeft = 0;
+let timerId = null;
+let tableBody = document.querySelector("#phaseTable tbody");
+
+function renderPhases() {
+  tableBody.innerHTML = "";
+  phases.forEach((phase, index) => {
+    let row = tableBody.insertRow();
+    row.id = "phaseRow" + index;
+    row.insertCell().innerText = phase.name;
+    row.insertCell().innerText = phase.duration;
+    row.insertCell().innerText = phase.desc;
+    row.insertCell().innerText = phase.rpm;
+    row.insertCell().innerText = phase.hf + " %";
+  });
+}
+
+function highlightPhase(index) {
+  for (let i = 0; i < phases.length; i++) {
+    document.getElementById("phaseRow" + i).className = i === index ? "active" : "";
+  }
+}
+
+function startWorkout() {
+  if (timerId) return;
+  if (currentPhase === -1) {
+    currentPhase = 0;
+    timeLeft = countdown;
+    document.getElementById("status").innerText = "Bereit? In 3 Sekunden geht's los...";
+    highlightPhase(currentPhase);
+  }
+  timerId = setInterval(() => {
+    document.getElementById("timer").innerText = timeLeft + " Sekunden";
+    if (timeLeft > 0) {
+      timeLeft--;
+    } else {
+      if (countdown > 0) {
+        countdown = 0;
+        timeLeft = phases[currentPhase].duration;
+        document.getElementById("status").innerText = "Aktiv: " + phases[currentPhase].name;
+      } else {
+        clearInterval(timerId);
+        timerId = null;
+        currentPhase++;
+        countdown = 3;
+        if (currentPhase < phases.length) {
+          highlightPhase(currentPhase);
+          timeLeft = countdown;
+          document.getElementById("status").innerText = "Nächste Phase in 3 Sekunden...";
+          startWorkout();
+        } else {
+          document.getElementById("status").innerText = "Training abgeschlossen!";
+          document.getElementById("timer").innerText = "0";
+          highlightPhase(-1);
+        }
+      }
+    }
+  }, 1000);
+}
+
+function stopWorkout() {
+  clearInterval(timerId);
+  timerId = null;
+}
+
+function resetWorkout() {
+  stopWorkout();
+  currentPhase = -1;
+  countdown = 3;
+  timeLeft = 0;
+  document.getElementById("status").innerText = "Bereit";
+  document.getElementById("timer").innerText = "0";
+  highlightPhase(-1);
+}
+
+renderPhases();
+</script>
+</body>
+</html>
